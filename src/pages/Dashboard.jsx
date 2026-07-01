@@ -1,11 +1,18 @@
 import { Suspense, lazy, useState, useCallback, useEffect } from 'react'
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
+<<<<<<< HEAD
 import { signOut } from 'firebase/auth'
+=======
+>>>>>>> 27459c9d8e4e689f25ee4b5060eae98e0a4115e8
 import { doc, getDoc } from 'firebase/firestore'
 
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
+<<<<<<< HEAD
 import { auth, db } from '../services/firebase'
+=======
+import { db } from '../services/firebase'
+>>>>>>> 27459c9d8e4e689f25ee4b5060eae98e0a4115e8
 
 const Home = lazy(() => import('./Home'))
 const ProfessionalHome = lazy(() => import('./ProfessionalHome'))
@@ -17,7 +24,10 @@ function urlToPage(pathname) {
   if (pathname.includes('criar')) return 'create'
   if (pathname.includes('profissionais')) return 'professionals'
   if (pathname.includes('meus')) return 'myposts'
+<<<<<<< HEAD
   if (pathname.includes('feed-comunidade')) return 'community'
+=======
+>>>>>>> 27459c9d8e4e689f25ee4b5060eae98e0a4115e8
   return 'home'
 }
 
@@ -39,7 +49,11 @@ function PageFallback() {
 export default function Dashboard({ user }) {
   const navigate = useNavigate()
   const location = useLocation()
+<<<<<<< HEAD
   const activePageBase = urlToPage(location.pathname)
+=======
+  const activePage = urlToPage(location.pathname)
+>>>>>>> 27459c9d8e4e689f25ee4b5060eae98e0a4115e8
 
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [profile, setProfile] = useState(null)
@@ -76,6 +90,7 @@ export default function Dashboard({ user }) {
   }, [user?.uid])
 
   const handleNavigate = useCallback(
+<<<<<<< HEAD
     async (page) => {
       if (page === 'logout') {
         await signOut(auth)
@@ -95,10 +110,15 @@ export default function Dashboard({ user }) {
         return
       }
 
+=======
+    (page) => {
+      setSidebarOpen(false)
+>>>>>>> 27459c9d8e4e689f25ee4b5060eae98e0a4115e8
       navigate(ROUTE_PATHS[page] || ROUTE_PATHS.home)
     },
     [navigate]
   )
+<<<<<<< HEAD
 
   const isProfessional = profile?.tipo === 'profissional'
   const activePage = isProfessional && location.hash ? location.hash.replace('#', '') : activePageBase
@@ -110,6 +130,8 @@ export default function Dashboard({ user }) {
       document.querySelector(location.hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }, 50)
   }, [location.hash])
+=======
+>>>>>>> 27459c9d8e4e689f25ee4b5060eae98e0a4115e8
 
   return (
     <div className="min-h-screen bg-stone-50">
@@ -123,8 +145,13 @@ export default function Dashboard({ user }) {
         profile={profile}
       />
 
+<<<<<<< HEAD
       <main className={`pt-14 ${isProfessional ? 'lg:pl-64' : 'lg:pl-56'} min-h-screen`}>
         <div className={`${isProfessional ? 'max-w-7xl' : 'max-w-2xl'} mx-auto px-4 py-8 animate-fade-in`}>
+=======
+      <main className="pt-14 lg:pl-56 min-h-screen">
+        <div className="max-w-2xl mx-auto px-4 py-8 animate-fade-in">
+>>>>>>> 27459c9d8e4e689f25ee4b5060eae98e0a4115e8
           <Suspense fallback={<PageFallback />}>
             <Routes>
               <Route
@@ -135,9 +162,12 @@ export default function Dashboard({ user }) {
                   ) : profile?.tipo === 'profissional' ? (
                     <ProfessionalHome user={user} profile={profile} onNavigate={(target) => {
                       if (target === 'community') navigate('/dashboard/feed-comunidade')
+<<<<<<< HEAD
                       if (target === 'profile') navigate('/dashboard#profile')
                       if (target === 'requests') navigate('/dashboard#requests')
                       if (target === 'schedule') navigate('/dashboard#schedule')
+=======
+>>>>>>> 27459c9d8e4e689f25ee4b5060eae98e0a4115e8
                     }} />
                   ) : (
                     <Home user={user} />

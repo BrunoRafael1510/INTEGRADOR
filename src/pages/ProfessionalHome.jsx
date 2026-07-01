@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { useEffect, useMemo, useState } from 'react'
 import Icon from '../components/Icon'
 
@@ -226,10 +227,90 @@ export default function ProfessionalHome({ user, profile, onNavigate }) {
               <Icon name="zap" />
               Completar Perfil
             </button>
+=======
+import Icon from '../components/Icon'
+
+const profileTips = [
+  'Mantenha areas de atuacao e abordagem claras.',
+  'Use uma descricao breve, humana e objetiva.',
+  'Inclua disponibilidade para reduzir mensagens desencontradas.',
+]
+
+export default function ProfessionalHome({ user, profile, onNavigate }) {
+  const displayName = profile?.nome || user?.displayName || 'profissional'
+  const areas = profile?.areas?.length ? profile.areas : [profile?.especialidade].filter(Boolean)
+
+  return (
+    <div className="space-y-6">
+      <section className="rounded-lg bg-stone-900 text-white p-6 md:p-7 overflow-hidden relative">
+        <div className="relative z-10">
+          <span className="inline-flex items-center gap-2 text-xs font-medium text-brand-100 bg-white/10 border border-white/10 px-3 py-1.5 rounded-full">
+            <Icon name="shield" className="w-3.5 h-3.5" />
+            Painel profissional
+          </span>
+          <h1 className="font-serif text-3xl mt-4 mb-2">Ola, {displayName}</h1>
+          <p className="text-stone-300 text-sm leading-relaxed max-w-xl">
+            Esta area e pensada para quem oferece suporte. Aqui voce acompanha seu perfil, entende como aparece no diretorio e pode participar da comunidade com cuidado.
+          </p>
+        </div>
+        <div className="absolute -right-10 -bottom-14 w-48 h-48 rounded-full border border-white/10" />
+      </section>
+
+      <section className="grid md:grid-cols-3 gap-3">
+        <div className="card p-4">
+          <Icon name="users" className="w-5 h-5 text-brand-600 mb-3" />
+          <p className="font-serif text-2xl text-stone-900">{areas.length || 0}</p>
+          <p className="text-xs text-stone-500">areas no perfil</p>
+        </div>
+        <div className="card p-4">
+          <Icon name="mail" className="w-5 h-5 text-sage-600 mb-3" />
+          <p className="font-serif text-2xl text-stone-900">{profile?.atendimento || 'Online'}</p>
+          <p className="text-xs text-stone-500">tipo de atendimento</p>
+        </div>
+        <div className="card p-4">
+          <Icon name="star" className="w-5 h-5 text-amber-500 mb-3" />
+          <p className="font-serif text-2xl text-stone-900">{profile?.media ? profile.media.toFixed(1) : 'Novo'}</p>
+          <p className="text-xs text-stone-500">avaliacao</p>
+        </div>
+      </section>
+
+      <section className="card p-5">
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <h2 className="font-serif text-xl text-stone-900 mb-1">Como seu perfil aparece</h2>
+            <p className="text-sm text-stone-500">Essas informacoes ajudam pacientes a entender seu trabalho antes do primeiro contato.</p>
+          </div>
+          <span className="badge bg-sage-50 text-sage-700 border border-sage-100">
+            <Icon name="check" className="w-3 h-3" />
+            Verificado
+          </span>
+        </div>
+
+        <div className="rounded-lg border border-stone-200 p-4">
+          <div className="flex items-start gap-3">
+            <div className="w-12 h-12 rounded-lg bg-stone-900 text-white flex items-center justify-center font-serif">
+              {displayName.split(' ').map((item) => item[0]).slice(0, 2).join('').toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-medium text-stone-900">{displayName}</h3>
+              <p className="text-sm text-brand-700 font-medium">{profile?.especialidade || areas[0] || 'Profissional de apoio'}</p>
+              {profile?.crp && <p className="text-xs text-stone-400 mt-1">{profile.crp}</p>}
+              {areas.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {areas.slice(0, 4).map((area) => (
+                    <span key={area} className="badge bg-stone-50 text-stone-600 border border-stone-200">
+                      {area}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+>>>>>>> 27459c9d8e4e689f25ee4b5060eae98e0a4115e8
           </div>
         </div>
       </section>
 
+<<<<<<< HEAD
       {loading ? (
         <SkeletonLoading />
       ) : (
@@ -395,6 +476,31 @@ export default function ProfessionalHome({ user, profile, onNavigate }) {
             </div>
           </div>
         </Card>
+=======
+      <section className="grid md:grid-cols-[1fr_0.9fr] gap-4">
+        <div className="card p-5">
+          <h2 className="font-serif text-xl text-stone-900 mb-4">Proximos cuidados</h2>
+          <div className="space-y-3">
+            {profileTips.map((tip) => (
+              <p key={tip} className="flex items-start gap-2 text-sm text-stone-600">
+                <Icon name="check" className="w-4 h-4 text-sage-600 mt-0.5 flex-shrink-0" />
+                {tip}
+              </p>
+            ))}
+          </div>
+        </div>
+
+        <div className="card p-5">
+          <h2 className="font-serif text-xl text-stone-900 mb-2">Comunidade</h2>
+          <p className="text-sm text-stone-500 leading-relaxed mb-4">
+            Voce tambem pode ler o feed e responder quando fizer sentido, mantendo uma postura acolhedora e sem diagnosticar.
+          </p>
+          <button onClick={() => onNavigate('community')} className="btn-secondary w-full gap-2">
+            <Icon name="message" className="w-4 h-4" />
+            Ver feed da comunidade
+          </button>
+        </div>
+>>>>>>> 27459c9d8e4e689f25ee4b5060eae98e0a4115e8
       </section>
     </div>
   )
