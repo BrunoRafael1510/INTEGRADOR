@@ -1,110 +1,106 @@
-<<<<<<< HEAD
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { deleteDoc, doc, increment, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, arrayUnion, collection, where } from 'firebase/firestore'
+import { deleteUser, updateEmail, updatePassword } from 'firebase/auth'
+import { db } from '../services/firebase'
 import Icon from '../components/Icon'
 
-const stats = [
-  { label: 'Total de atendimentos', value: '126', icon: 'users', tone: 'bg-brand-50 text-brand-700 border-brand-100', delta: '+12 este mes' },
-  { label: 'Perfil visualizado', value: '1.284', icon: 'eye', tone: 'bg-sage-50 text-sage-700 border-sage-100', delta: '+42%' },
-  { label: 'Mensagens respondidas', value: '312', icon: 'message', tone: 'bg-indigo-50 text-indigo-700 border-indigo-100', delta: '18 na semana' },
-  { label: 'Solicitacoes pendentes', value: '4', icon: 'inbox', tone: 'bg-amber-50 text-amber-700 border-amber-100', delta: '2 urgentes' },
-  { label: 'Avaliacao media', value: '4.9', icon: 'star', tone: 'bg-yellow-50 text-yellow-700 border-yellow-100', delta: '38 avaliacoes' },
-  { label: 'Taxa de resposta', value: '96%', icon: 'activity', tone: 'bg-emerald-50 text-emerald-700 border-emerald-100', delta: '+8%' },
-  { label: 'Tempo medio de resposta', value: '18min', icon: 'clock', tone: 'bg-sky-50 text-sky-700 border-sky-100', delta: 'meta: 30min' },
-  { label: 'Pacientes ajudados', value: '89', icon: 'heart', tone: 'bg-rose-50 text-rose-700 border-rose-100', delta: '+7 recentes' },
+const REQUEST_STATUS = ['nova', 'pendente', 'aceita', 'recusada', 'finalizada']
+const CATEGORIES = ['Todas', 'Ansiedade', 'Depressao', 'Relacionamentos', 'Familia', 'Trabalho', 'Estudos', 'Autoestima', 'Outros']
+const PROFILE_FIELDS = [
+  'fotoUrl', 'nome', 'crp', 'especialidade', 'areas', 'formacao', 'experiencia', 'descricao',
+  'atendimento', 'cidade', 'estado', 'valorConsulta', 'idiomas', 'disponibilidade',
 ]
 
-const tasks = [
-  { label: 'Complete sua biografia', progress: 80 },
-  { label: 'Adicionar foto profissional', progress: 100 },
-  { label: 'Inserir especialidades', progress: 70 },
-  { label: 'Verificar e-mail', progress: 100 },
-  { label: 'Adicionar CRP', progress: 60 },
-  { label: 'Definir disponibilidade', progress: 45 },
-]
-
-const requests = [
-  { name: 'Maria', text: 'deseja conversar sobre ansiedade no trabalho.', time: 'Agora', action: 'Responder' },
-  { name: 'Carlos', text: 'comentou no seu perfil publico.', time: '12 min', action: 'Ver comentario' },
-  { name: 'Ana', text: 'respondeu sua mensagem na comunidade.', time: '34 min', action: 'Abrir conversa' },
-  { name: 'Pedro', text: 'enviou um agradecimento pelo acolhimento.', time: '1 h', action: 'Visualizar' },
-]
-
-const community = [
-  { label: 'Novos desabafos', value: '23', icon: 'message' },
-  { label: 'Perguntas sem resposta', value: '8', icon: 'alert' },
-  { label: 'Postagens populares', value: '5', icon: 'trend' },
-]
-
-const schedule = [
-  { hour: '09:00', title: 'Triagem inicial', mode: 'Online' },
-  { hour: '11:30', title: 'Retorno breve', mode: 'Online' },
-  { hour: '15:00', title: 'Janela disponivel', mode: 'Livre' },
-]
-
-const goals = [
-  'Complete seu perfil',
-  'Responda 5 pessoas',
-  'Atualize sua disponibilidade',
-  'Receba sua primeira avaliacao',
-  'Alcance perfil verificado',
-]
-
-const quickActions = [
-  { label: 'Nova publicacao', icon: 'plus' },
-  { label: 'Responder comunidade', icon: 'pen' },
-  { label: 'Editar perfil', icon: 'user' },
-  { label: 'Atualizar disponibilidade', icon: 'calendar' },
-  { label: 'Ver solicitacoes', icon: 'inbox' },
-]
-
-function Card({ children, className = '', id }) {
-  return (
-    <section id={id} className={`card p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card ${className}`}>
-      {children}
-    </section>
-  )
+function toDate(value) {
+  if (!value) return null
+  return value?.toDate ? value.toDate() : new Date(value)
 }
 
-function SectionTitle({ icon, title, description, action }) {
+function formatDate(value) {
+  const date = toDate(value)
+  return date ? new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(date) : 'Sem data'
+}
+
+function minutesBetween(start, end) {
+  const a = toDate(start)
+  const b = toDate(end)
+  if (!a || !b) return null
+  return Math.max(0, Math.round((b - a) / 60000))
+}
+
+function timeAgo(value) {
+  const date = toDate(value)
+  if (!date) return 'Sem data'
+  const diff = Math.floor((Date.now() - date.getTime()) / 1000)
+  if (diff < 60) return 'agora'
+  if (diff < 3600) return `${Math.floor(diff / 60)}min`
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h`
+  return `${Math.floor(diff / 86400)}d`
+}
+
+function average(values) {
+  const valid = values.filter((item) => Number.isFinite(item))
+  if (!valid.length) return 0
+  return valid.reduce((sum, item) => sum + item, 0) / valid.length
+}
+
+function arrayFromText(value) {
+  return value.split(',').map((item) => item.trim()).filter(Boolean)
+}
+
+function textFromArray(value) {
+  return Array.isArray(value) ? value.join(', ') : value || ''
+}
+
+function profileCompletion(profile) {
+  const filled = PROFILE_FIELDS.filter((field) => {
+    const value = profile?.[field]
+    return Array.isArray(value) ? value.length > 0 : Boolean(value)
+  }).length
+  return Math.round((filled / PROFILE_FIELDS.length) * 100)
+}
+
+function EmptyState({ icon = 'inbox', title, description, action }) {
   return (
-    <div className="mb-4 flex items-start justify-between gap-4">
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          {icon && <Icon name={icon} className="h-4 w-4 text-brand-600" />}
-          <h2 className="font-sans text-base font-semibold text-stone-900">{title}</h2>
-        </div>
-        {description && <p className="mt-1 text-sm leading-relaxed text-stone-500">{description}</p>}
+    <div className="rounded-lg border border-dashed border-stone-300 bg-white p-8 text-center">
+      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-stone-100 text-stone-500">
+        <Icon name={icon} className="h-6 w-6" />
       </div>
-      {action}
+      <p className="font-serif text-lg text-stone-800">{title}</p>
+      <p className="mx-auto mt-1 max-w-md text-sm leading-relaxed text-stone-500">{description}</p>
+      {action && <div className="mt-4">{action}</div>}
     </div>
   )
 }
 
-function SkeletonLoading() {
+function SectionHeader({ eyebrow, title, description, actions }) {
   return (
-    <div className="grid gap-4 md:grid-cols-4">
-      {[1, 2, 3, 4].map((item) => (
-        <div key={item} className="h-28 animate-pulse rounded-lg border border-stone-200 bg-white p-4">
-          <div className="mb-5 h-8 w-8 rounded-lg bg-stone-100" />
-          <div className="mb-3 h-4 w-20 rounded bg-stone-100" />
-          <div className="h-3 w-28 rounded bg-stone-100" />
-        </div>
-      ))}
+    <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <div>
+        {eyebrow && (
+          <span className="mb-3 inline-flex items-center gap-2 rounded-full border border-brand-100 bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700">
+            {eyebrow}
+          </span>
+        )}
+        <h1 className="font-sans text-2xl font-semibold tracking-normal text-stone-950 md:text-3xl">{title}</h1>
+        {description && <p className="mt-2 max-w-2xl text-sm leading-relaxed text-stone-500">{description}</p>}
+      </div>
+      {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
     </div>
   )
 }
 
-function StatCard({ item }) {
+function StatCard({ label, value, icon, hint }) {
   return (
-    <div className="group rounded-lg border border-stone-200 bg-white p-4 shadow-soft transition-all duration-200 hover:-translate-y-1 hover:border-brand-100 hover:shadow-card">
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <span className={`rounded-lg border p-2 ${item.tone}`}>
-          <Icon name={item.icon} className="h-4 w-4" />
+    <div className="rounded-lg border border-stone-200 bg-white p-4 shadow-soft transition hover:-translate-y-0.5 hover:shadow-card">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <span className="rounded-lg border border-brand-100 bg-brand-50 p-2 text-brand-700">
+          <Icon name={icon} className="h-4 w-4" />
         </span>
-        <span className="text-xs font-medium text-stone-400 transition group-hover:text-brand-600">{item.delta}</span>
       </div>
-      <p className="text-2xl font-semibold tracking-normal text-stone-950">{item.value}</p>
-      <p className="mt-1 text-sm text-stone-500">{item.label}</p>
+      <p className="text-2xl font-semibold tracking-normal text-stone-950">{value}</p>
+      <p className="mt-1 text-sm text-stone-500">{label}</p>
+      {hint && <p className="mt-2 text-xs text-stone-400">{hint}</p>}
     </div>
   )
 }
@@ -112,396 +108,789 @@ function StatCard({ item }) {
 function ProgressBar({ value }) {
   return (
     <div className="h-2 overflow-hidden rounded-full bg-stone-100">
-      <div className="h-full rounded-full bg-brand-600 transition-all duration-500" style={{ width: `${value}%` }} />
+      <div className="h-full rounded-full bg-brand-600 transition-all duration-300" style={{ width: `${value}%` }} />
     </div>
   )
 }
 
-function PublicProfilePreview({ displayName, profile, areas }) {
+function SmallBarChart({ data, emptyText }) {
+  const max = Math.max(...data.map((item) => item.value), 0)
+  if (!max) return <EmptyState icon="chart" title="Sem dados suficientes" description={emptyText} />
+
   return (
-    <Card id="profile" className="lg:col-span-7">
-      <SectionTitle
-        icon="eye"
-        title="Preview do perfil publico"
-        description="Como pacientes enxergam suas informacoes antes de solicitar contato."
-        action={<button className="btn-secondary gap-2 whitespace-nowrap"><Icon name="edit" />Editar Perfil</button>}
+    <div className="space-y-3">
+      {data.map((item) => (
+        <div key={item.label}>
+          <div className="mb-1 flex items-center justify-between gap-3 text-xs">
+            <span className="text-stone-500">{item.label}</span>
+            <span className="font-medium text-stone-800">{item.value}</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-stone-100">
+            <div className="h-full rounded-full bg-brand-600" style={{ width: `${(item.value / max) * 100}%` }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function useProfessionalData(user) {
+  const [state, setState] = useState({
+    posts: [],
+    requests: [],
+    appointments: [],
+    reviews: [],
+    profileViews: [],
+    savedIds: [],
+    loading: true,
+    error: '',
+  })
+
+  useEffect(() => {
+    if (!user?.uid) return undefined
+
+    setState((current) => ({ ...current, loading: true, error: '' }))
+    const subscriptions = [
+      onSnapshot(
+        query(collection(db, 'posts'), orderBy('criadoEm', 'desc'), limit(120)),
+        (snap) => setState((current) => ({ ...current, posts: snap.docs.map((d) => ({ id: d.id, ...d.data() })), loading: false })),
+        (error) => setState((current) => ({ ...current, error: error.message, loading: false }))
+      ),
+      onSnapshot(
+        query(collection(db, 'requests'), where('profissionalUid', '==', user.uid)),
+        (snap) => setState((current) => ({ ...current, requests: snap.docs.map((d) => ({ id: d.id, ...d.data() })) })),
+        (error) => setState((current) => ({ ...current, error: error.message }))
+      ),
+      onSnapshot(
+        query(collection(db, 'appointments'), where('profissionalUid', '==', user.uid)),
+        (snap) => setState((current) => ({ ...current, appointments: snap.docs.map((d) => ({ id: d.id, ...d.data() })) })),
+        (error) => setState((current) => ({ ...current, error: error.message }))
+      ),
+      onSnapshot(
+        query(collection(db, 'reviews'), where('profissionalUid', '==', user.uid)),
+        (snap) => setState((current) => ({ ...current, reviews: snap.docs.map((d) => ({ id: d.id, ...d.data() })) })),
+        (error) => setState((current) => ({ ...current, error: error.message }))
+      ),
+      onSnapshot(
+        query(collection(db, 'profileViews'), where('profissionalUid', '==', user.uid)),
+        (snap) => setState((current) => ({ ...current, profileViews: snap.docs.map((d) => ({ id: d.id, ...d.data() })) })),
+        (error) => setState((current) => ({ ...current, error: error.message }))
+      ),
+      onSnapshot(
+        collection(db, 'users', user.uid, 'savedPosts'),
+        (snap) => setState((current) => ({ ...current, savedIds: snap.docs.map((d) => d.id) })),
+        (error) => setState((current) => ({ ...current, error: error.message }))
+      ),
+    ]
+
+    return () => subscriptions.forEach((unsubscribe) => unsubscribe())
+  }, [user?.uid])
+
+  return state
+}
+
+function buildMetrics({ posts, requests, appointments, reviews, profileViews }, uid) {
+  const completedAppointments = appointments.filter((item) => item.status === 'concluida' || item.status === 'finalizada')
+  const finalizedRequests = requests.filter((item) => item.status === 'finalizada')
+  const ownResponses = posts.flatMap((post) =>
+    (post.respostas || [])
+      .filter((response) => response.autorUid === uid)
+      .map((response) => ({ post, response }))
+  )
+  const firstResponseTimes = ownResponses
+    .map(({ post, response }) => minutesBetween(post.criadoEm, response.criadaEm))
+    .filter((item) => item !== null)
+  const respondedRequestCount = requests.filter((item) => ['aceita', 'recusada', 'finalizada'].includes(item.status)).length
+  const helpedPatientIds = new Set([
+    ...completedAppointments.map((item) => item.pacienteUid).filter(Boolean),
+    ...finalizedRequests.map((item) => item.pacienteUid).filter(Boolean),
+  ])
+  const reviewAverage = average(reviews.map((item) => Number(item.nota)))
+
+  return {
+    completedAppointments: completedAppointments.length + finalizedRequests.length,
+    profileViews: profileViews.length,
+    answeredMessages: ownResponses.length,
+    pendingRequests: requests.filter((item) => ['nova', 'pendente'].includes(item.status)).length,
+    averageRating: reviewAverage ? reviewAverage.toFixed(1) : '0',
+    responseRate: requests.length ? `${Math.round((respondedRequestCount / requests.length) * 100)}%` : '0%',
+    averageResponseTime: firstResponseTimes.length ? `${Math.round(average(firstResponseTimes))}min` : '0min',
+    helpedPatients: helpedPatientIds.size,
+  }
+}
+
+function OverviewPage({ user, profile, data, metrics, onNavigate }) {
+  const completion = profileCompletion(profile)
+
+  return (
+    <div>
+      <SectionHeader
+        eyebrow="Central profissional SafeTalk"
+        title={`Ola, ${profile?.nome || user?.displayName || 'profissional'}`}
+        description="Indicadores, solicitacoes e atividades abaixo sao calculados apenas a partir dos dados persistidos no Firebase."
+        actions={[
+          <button key="profile" onClick={() => onNavigate('profile')} className="btn-primary gap-2"><Icon name="edit" />Editar perfil</button>,
+          <button key="requests" onClick={() => onNavigate('requests')} className="btn-secondary gap-2"><Icon name="inbox" />Solicitacoes</button>,
+        ]}
       />
 
-      <div className="rounded-lg border border-stone-200 bg-stone-50/60 p-4">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-          <div className="h-20 w-20 rounded-lg bg-stone-900 text-white shadow-soft flex items-center justify-center text-xl font-semibold">
-            {displayName.split(' ').map((item) => item[0]).slice(0, 2).join('').toUpperCase()}
+      {data.error && (
+        <div className="mb-4 rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+          Nao foi possivel carregar parte dos dados: {data.error}
+        </div>
+      )}
+
+      <section className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Total de atendimentos" value={metrics.completedAppointments} icon="users" hint="Atendimentos finalizados" />
+        <StatCard label="Perfil visualizado" value={metrics.profileViews} icon="eye" hint="Registros em profileViews" />
+        <StatCard label="Mensagens respondidas" value={metrics.answeredMessages} icon="message" hint="Respostas em desabafos" />
+        <StatCard label="Solicitacoes pendentes" value={metrics.pendingRequests} icon="inbox" hint="Status nova ou pendente" />
+        <StatCard label="Avaliacao media" value={metrics.averageRating} icon="star" hint="Media das avaliacoes reais" />
+        <StatCard label="Taxa de resposta" value={metrics.responseRate} icon="activity" hint="Solicitacoes respondidas" />
+        <StatCard label="Tempo medio de resposta" value={metrics.averageResponseTime} icon="clock" hint="Primeira resposta ao desabafo" />
+        <StatCard label="Pacientes ajudados" value={metrics.helpedPatients} icon="heart" hint="Pacientes finalizados" />
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[1fr_420px]">
+        <div className="card p-5">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <div>
+              <h2 className="font-sans text-base font-semibold text-stone-950">Perfil profissional</h2>
+              <p className="text-sm text-stone-500">Campos completos atualizam a barra automaticamente.</p>
+            </div>
+            <span className="badge border border-brand-100 bg-brand-50 text-brand-700">{completion}%</span>
           </div>
+          <ProgressBar value={completion} />
+          <ProfilePreview profile={profile} />
+        </div>
 
-          <div className="flex-1 min-w-0">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <h3 className="text-xl font-semibold text-stone-950">{displayName}</h3>
-                <p className="text-sm font-medium text-brand-700">{profile?.especialidade || 'Psicologia clinica'}</p>
-                <p className="mt-1 text-xs text-stone-500">{profile?.crp || 'CRP 06/123456'} · {profile?.cidade || 'Sao Paulo, SP'}</p>
-              </div>
-              <span className="badge border border-sage-100 bg-sage-50 text-sage-700">
-                <Icon name="check" className="h-3 w-3" />
-                Verificado
-              </span>
-            </div>
-
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-lg bg-white p-3 border border-stone-200">
-                <p className="text-xs text-stone-400">Modalidade</p>
-                <p className="text-sm font-medium text-stone-800">{profile?.atendimento || 'Online e presencial'}</p>
-              </div>
-              <div className="rounded-lg bg-white p-3 border border-stone-200">
-                <p className="text-xs text-stone-400">Preco</p>
-                <p className="text-sm font-medium text-stone-800">{profile?.preco || 'R$ 180 / sessao'}</p>
-              </div>
-              <div className="rounded-lg bg-white p-3 border border-stone-200">
-                <p className="text-xs text-stone-400">Disponibilidade</p>
-                <p className="text-sm font-medium text-stone-800">Hoje, 15:00</p>
-              </div>
-            </div>
-
-            <p className="mt-4 text-sm leading-relaxed text-stone-600">
-              {profile?.descricao || 'Atendimento acolhedor para adultos que buscam lidar com ansiedade, autoestima, relacionamentos e momentos de transicao, com escuta etica e plano de cuidado claro.'}
-            </p>
-
-            <div className="mt-4 flex flex-wrap gap-2">
-              {areas.map((area) => (
-                <span key={area} className="badge border border-stone-200 bg-white text-stone-600">{area}</span>
+        <div className="card p-5">
+          <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Solicitacoes recentes</h2>
+          {data.requests.length ? (
+            <div className="space-y-3">
+              {data.requests.slice(0, 5).map((request) => (
+                <div key={request.id} className="rounded-lg border border-stone-200 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-medium text-stone-800">{request.pacienteNome || 'Paciente anonimo'}</p>
+                    <span className="badge border border-stone-200 bg-stone-50 text-stone-600">{request.status || 'nova'}</span>
+                  </div>
+                  <p className="mt-1 line-clamp-2 text-sm text-stone-500">{request.motivo || 'Sem motivo informado'}</p>
+                  <p className="mt-2 text-xs text-stone-400">{formatDate(request.criadaEm)}</p>
+                </div>
               ))}
             </div>
+          ) : (
+            <EmptyState icon="inbox" title="Nenhuma solicitacao" description="Quando pacientes solicitarem contato, os pedidos aparecem aqui." />
+          )}
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function ProfilePreview({ profile }) {
+  const displayName = profile?.nome || 'Nome profissional nao informado'
+  const areas = Array.isArray(profile?.areas) ? profile.areas : []
+
+  return (
+    <div className="mt-5 rounded-lg border border-stone-200 bg-stone-50 p-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-stone-900 text-white">
+          {profile?.fotoUrl ? <img src={profile.fotoUrl} alt="" className="h-full w-full object-cover" /> : displayName.split(' ').map((item) => item[0]).slice(0, 2).join('').toUpperCase()}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h3 className="font-semibold text-stone-950">{displayName}</h3>
+              <p className="text-sm font-medium text-brand-700">{profile?.especialidade || 'Especialidade nao informada'}</p>
+              <p className="mt-1 text-xs text-stone-500">
+                {[profile?.crp, profile?.cidade && profile?.estado ? `${profile.cidade}, ${profile.estado}` : null].filter(Boolean).join(' - ') || 'Registro e localizacao pendentes'}
+              </p>
+            </div>
+            <span className={`badge border ${profile?.verificado ? 'border-sage-100 bg-sage-50 text-sage-700' : 'border-amber-100 bg-amber-50 text-amber-700'}`}>
+              <Icon name={profile?.verificado ? 'check' : 'clock'} className="h-3 w-3" />
+              {profile?.verificado ? 'Verificado' : 'Pendente'}
+            </span>
+          </div>
+
+          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            <div className="rounded-lg border border-stone-200 bg-white p-3">
+              <p className="text-xs text-stone-400">Modalidade</p>
+              <p className="text-sm font-medium text-stone-800">{profile?.atendimento || 'Nao informada'}</p>
+            </div>
+            <div className="rounded-lg border border-stone-200 bg-white p-3">
+              <p className="text-xs text-stone-400">Valor</p>
+              <p className="text-sm font-medium text-stone-800">{profile?.valorConsulta || 'Nao informado'}</p>
+            </div>
+            <div className="rounded-lg border border-stone-200 bg-white p-3">
+              <p className="text-xs text-stone-400">Disponibilidade</p>
+              <p className="text-sm font-medium text-stone-800">{profile?.disponibilidade || 'Nao informada'}</p>
+            </div>
+          </div>
+
+          {profile?.descricao && <p className="mt-4 text-sm leading-relaxed text-stone-600">{profile.descricao}</p>}
+          {areas.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {areas.map((area) => <span key={area} className="badge border border-stone-200 bg-white text-stone-600">{area}</span>)}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ProfilePage({ user, profile, onNavigate }) {
+  const [draft, setDraft] = useState(profile || {})
+  const [saveState, setSaveState] = useState('salvo')
+
+  useEffect(() => {
+    setDraft(profile || {})
+  }, [profile])
+
+  useEffect(() => {
+    if (!user?.uid || !draft?.uid) return undefined
+    setSaveState('salvando')
+    const timer = window.setTimeout(async () => {
+      try {
+        await updateDoc(doc(db, 'users', user.uid), {
+          ...draft,
+          areas: Array.isArray(draft.areas) ? draft.areas : arrayFromText(draft.areas || ''),
+          idiomas: Array.isArray(draft.idiomas) ? draft.idiomas : arrayFromText(draft.idiomas || ''),
+          atualizadoEm: serverTimestamp(),
+        })
+        setSaveState('salvo')
+      } catch (error) {
+        console.error(error)
+        setSaveState('erro')
+      }
+    }, 700)
+    return () => window.clearTimeout(timer)
+  }, [draft, user?.uid])
+
+  const setField = (field, value) => setDraft((current) => ({ ...current, [field]: value }))
+  const completion = profileCompletion(draft)
+
+  return (
+    <div>
+      <SectionHeader
+        title="Meu Perfil"
+        description="Toda alteracao e salva automaticamente no documento do profissional em users."
+        actions={[
+          <button key="view" onClick={() => onNavigate('professionals')} className="btn-secondary gap-2"><Icon name="eye" />Visualizar como paciente</button>,
+          <span key="state" className={`badge border ${saveState === 'erro' ? 'border-red-100 bg-red-50 text-red-700' : 'border-sage-100 bg-sage-50 text-sage-700'}`}>
+            {saveState === 'salvando' ? 'Salvando...' : saveState === 'erro' ? 'Erro ao salvar' : 'Salvo'}
+          </span>,
+        ]}
+      />
+
+      <div className="grid gap-4 lg:grid-cols-[1fr_420px]">
+        <form className="card grid gap-4 p-5 sm:grid-cols-2">
+          <div>
+            <label className="label">Foto de perfil (URL)</label>
+            <input className="input-field" value={draft.fotoUrl || ''} onChange={(e) => setField('fotoUrl', e.target.value)} placeholder="https://..." />
+          </div>
+          <div>
+            <label className="label">Nome</label>
+            <input className="input-field" value={draft.nome || ''} onChange={(e) => setField('nome', e.target.value)} />
+          </div>
+          <div>
+            <label className="label">CRP / Registro Profissional</label>
+            <input className="input-field" value={draft.crp || ''} onChange={(e) => setField('crp', e.target.value)} />
+          </div>
+          <div>
+            <label className="label">Especialidade</label>
+            <input className="input-field" value={draft.especialidade || ''} onChange={(e) => setField('especialidade', e.target.value)} />
+          </div>
+          <div>
+            <label className="label">Areas de atuacao</label>
+            <input className="input-field" value={textFromArray(draft.areas)} onChange={(e) => setField('areas', e.target.value)} placeholder="Separadas por virgula" />
+          </div>
+          <div>
+            <label className="label">Idiomas</label>
+            <input className="input-field" value={textFromArray(draft.idiomas)} onChange={(e) => setField('idiomas', e.target.value)} placeholder="Separados por virgula" />
+          </div>
+          <div>
+            <label className="label">Formacao</label>
+            <input className="input-field" value={draft.formacao || ''} onChange={(e) => setField('formacao', e.target.value)} />
+          </div>
+          <div>
+            <label className="label">Experiencia</label>
+            <input className="input-field" value={draft.experiencia || ''} onChange={(e) => setField('experiencia', e.target.value)} />
+          </div>
+          <div>
+            <label className="label">Modalidade</label>
+            <select className="input-field" value={draft.atendimento || ''} onChange={(e) => setField('atendimento', e.target.value)}>
+              <option value="">Selecione</option>
+              <option>Online</option>
+              <option>Presencial</option>
+              <option>Online e presencial</option>
+            </select>
+          </div>
+          <div>
+            <label className="label">Valor da consulta</label>
+            <input className="input-field" value={draft.valorConsulta || ''} onChange={(e) => setField('valorConsulta', e.target.value)} placeholder="Ex: R$ 180,00" />
+          </div>
+          <div>
+            <label className="label">Cidade</label>
+            <input className="input-field" value={draft.cidade || ''} onChange={(e) => setField('cidade', e.target.value)} />
+          </div>
+          <div>
+            <label className="label">Estado</label>
+            <input className="input-field" value={draft.estado || ''} onChange={(e) => setField('estado', e.target.value)} />
+          </div>
+          <div>
+            <label className="label">Disponibilidade</label>
+            <input className="input-field" value={draft.disponibilidade || ''} onChange={(e) => setField('disponibilidade', e.target.value)} />
+          </div>
+          <div>
+            <label className="label">Redes sociais</label>
+            <input className="input-field" value={draft.redesSociais || ''} onChange={(e) => setField('redesSociais', e.target.value)} />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="label">Certificacoes</label>
+            <input className="input-field" value={draft.certificacoes || ''} onChange={(e) => setField('certificacoes', e.target.value)} />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="label">Biografia</label>
+            <textarea className="input-field" rows={5} value={draft.descricao || ''} onChange={(e) => setField('descricao', e.target.value)} />
+          </div>
+        </form>
+
+        <aside className="space-y-4">
+          <div className="card p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="font-sans text-base font-semibold text-stone-950">Progresso do perfil</h2>
+              <span className="text-sm font-semibold text-brand-700">{completion}%</span>
+            </div>
+            <ProgressBar value={completion} />
+          </div>
+          <div className="card p-5">
+            <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Preview do paciente</h2>
+            <ProfilePreview profile={draft} />
+          </div>
+        </aside>
+      </div>
+    </div>
+  )
+}
+
+function RequestsPage({ requests }) {
+  const [selected, setSelected] = useState(null)
+
+  const updateStatus = async (request, status) => {
+    await updateDoc(doc(db, 'requests', request.id), {
+      status,
+      respondidaEm: ['aceita', 'recusada'].includes(status) ? serverTimestamp() : request.respondidaEm || null,
+      finalizadaEm: status === 'finalizada' ? serverTimestamp() : request.finalizadaEm || null,
+      atualizadaEm: serverTimestamp(),
+    })
+  }
+
+  return (
+    <div>
+      <SectionHeader title="Solicitacoes" description="Central real de pedidos de contato enviados pelos pacientes." />
+
+      <section className="mb-6 grid gap-3 sm:grid-cols-5">
+        {REQUEST_STATUS.map((status) => (
+          <StatCard key={status} label={status} value={requests.filter((item) => (item.status || 'nova') === status).length} icon="inbox" />
+        ))}
+      </section>
+
+      {requests.length ? (
+        <div className="space-y-3">
+          {requests.map((request) => (
+            <article key={request.id} className="card p-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="font-medium text-stone-950">{request.pacienteNome || 'Paciente anonimo'}</h2>
+                    <span className="badge border border-stone-200 bg-stone-50 text-stone-600">{request.status || 'nova'}</span>
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-stone-600">{request.motivo || 'Sem motivo informado'}</p>
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs text-stone-400">
+                    <span>{formatDate(request.criadaEm)}</span>
+                    <span>{request.categoria || 'Sem categoria'}</span>
+                    <span>Espera: {timeAgo(request.criadaEm)}</span>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={() => updateStatus(request, 'aceita')} className="btn-primary px-3 py-2 text-xs">Aceitar</button>
+                  <button onClick={() => updateStatus(request, 'recusada')} className="btn-secondary px-3 py-2 text-xs">Recusar</button>
+                  <button onClick={() => setSelected(request)} className="btn-secondary px-3 py-2 text-xs">Detalhes</button>
+                  <button onClick={() => updateStatus(request, 'finalizada')} className="btn-secondary px-3 py-2 text-xs">Finalizar</button>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <EmptyState icon="inbox" title="Nenhuma solicitacao recebida" description="Quando um paciente usar o diretorio para solicitar contato, o documento sera gravado em requests e aparecera aqui." />
+      )}
+
+      {selected && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+          <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-card">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <h3 className="font-serif text-xl text-stone-950">Detalhes da solicitacao</h3>
+                <p className="text-sm text-stone-500">{selected.pacienteNome || 'Paciente anonimo'}</p>
+              </div>
+              <button onClick={() => setSelected(null)} className="btn-ghost p-2"><Icon name="x" /></button>
+            </div>
+            <dl className="space-y-3 text-sm">
+              <div><dt className="font-medium text-stone-700">Motivo</dt><dd className="text-stone-500">{selected.motivo || 'Nao informado'}</dd></div>
+              <div><dt className="font-medium text-stone-700">Categoria</dt><dd className="text-stone-500">{selected.categoria || 'Nao informada'}</dd></div>
+              <div><dt className="font-medium text-stone-700">Status</dt><dd className="text-stone-500">{selected.status || 'nova'}</dd></div>
+              <div><dt className="font-medium text-stone-700">Criada em</dt><dd className="text-stone-500">{formatDate(selected.criadaEm)}</dd></div>
+            </dl>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CommunityPage({ posts, savedIds, user }) {
+  const [search, setSearch] = useState('')
+  const [category, setCategory] = useState('Todas')
+
+  const filtered = posts.filter((post) => {
+    const matchCategory = category === 'Todas' || post.categoria === category
+    const matchSearch = !search || [post.conteudo, post.categoria].filter(Boolean).join(' ').toLowerCase().includes(search.toLowerCase())
+    return matchCategory && matchSearch
+  })
+
+  const toggleSaved = async (post) => {
+    const ref = doc(db, 'users', user.uid, 'savedPosts', post.id)
+    if (savedIds.includes(post.id)) {
+      await deleteDoc(ref)
+      return
+    }
+    await setDoc(ref, { postId: post.id, salvoEm: serverTimestamp() })
+  }
+
+  return (
+    <div>
+      <SectionHeader title="Comunidade" description="Feed real de desabafos, interacoes, filtros e publicacoes salvas." />
+      <div className="card mb-5 grid gap-3 p-4 md:grid-cols-[1fr_auto]">
+        <div className="relative">
+          <Icon name="search" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+          <input className="input-field pl-10" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Pesquisar no feed..." />
+        </div>
+        <select className="input-field md:w-56" value={category} onChange={(e) => setCategory(e.target.value)}>
+          {CATEGORIES.map((item) => <option key={item}>{item}</option>)}
+        </select>
+      </div>
+
+      {filtered.length ? (
+        <div className="space-y-3">
+          {filtered.map((post) => (
+            <article key={post.id} className="card p-5">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <span className="badge border border-stone-200 bg-stone-50 text-stone-600">{post.categoria || 'Sem categoria'}</span>
+                <span className="text-xs text-stone-400">{formatDate(post.criadoEm)}</span>
+              </div>
+              <p className="whitespace-pre-line text-sm leading-relaxed text-stone-700">{post.conteudo}</p>
+              <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-stone-100 pt-3 text-xs text-stone-500">
+                <span className="flex items-center gap-1"><Icon name="heart" className="h-4 w-4" />{post.curtidas?.length || 0} curtidas</span>
+                <span className="flex items-center gap-1"><Icon name="message" className="h-4 w-4" />{post.respostas?.length || 0} comentarios</span>
+                <span className="flex items-center gap-1"><Icon name="activity" className="h-4 w-4" />{post.compartilhamentos || 0} compartilhamentos</span>
+                <button onClick={() => toggleSaved(post)} className="ml-auto text-brand-700 hover:underline">
+                  {savedIds.includes(post.id) ? 'Remover dos salvos' : 'Salvar'}
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <EmptyState icon="message" title="Nenhuma publicacao encontrada" description="Nao ha informacoes reais para os filtros selecionados." />
+      )}
+    </div>
+  )
+}
+
+function AnswerPage({ posts, user }) {
+  const [category, setCategory] = useState('Todas')
+  const [replyByPost, setReplyByPost] = useState({})
+
+  const pending = posts.filter((post) => (post.respostas?.length || 0) === 0)
+  const filtered = category === 'Todas' ? pending : pending.filter((post) => post.categoria === category)
+
+  const sendReply = async (post) => {
+    const text = replyByPost[post.id]?.trim()
+    if (!text) return
+    await updateDoc(doc(db, 'posts', post.id), {
+      respostas: arrayUnion({
+        id: `${user.uid}-${Date.now()}`,
+        texto: text,
+        autorUid: user.uid,
+        autorNome: user.displayName || 'Profissional',
+        criadaEm: new Date().toISOString(),
+        tipoAutor: 'profissional',
+      }),
+      totalRespostas: increment(1),
+      primeiraRespostaProfissionalEm: post.primeiraRespostaProfissionalEm || serverTimestamp(),
+      atualizadoEm: serverTimestamp(),
+    })
+    setReplyByPost((current) => ({ ...current, [post.id]: '' }))
+  }
+
+  return (
+    <div>
+      <SectionHeader title="Responder Desabafos" description="Mostra apenas desabafos reais sem respostas registradas." />
+      <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
+        {CATEGORIES.map((item) => (
+          <button key={item} onClick={() => setCategory(item)} className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium ${category === item ? 'border-brand-600 bg-brand-600 text-white' : 'border-stone-200 bg-white text-stone-600'}`}>
+            {item}
+          </button>
+        ))}
+      </div>
+
+      {filtered.length ? (
+        <div className="space-y-4">
+          {filtered.map((post) => (
+            <article key={post.id} className="card p-5">
+              <div className="mb-3 flex flex-wrap gap-2 text-xs text-stone-400">
+                <span>{formatDate(post.criadoEm)}</span>
+                <span>{timeAgo(post.criadoEm)}</span>
+                <span>{post.categoria || 'Sem categoria'}</span>
+                <span>{post.prioridade || 'Prioridade nao definida'}</span>
+                <span>{post.respostas?.length || 0} respostas</span>
+              </div>
+              <p className="whitespace-pre-line text-sm leading-relaxed text-stone-700">{post.conteudo}</p>
+              <textarea
+                className="input-field mt-4"
+                rows={3}
+                value={replyByPost[post.id] || ''}
+                onChange={(e) => setReplyByPost((current) => ({ ...current, [post.id]: e.target.value }))}
+                placeholder="Responder com acolhimento..."
+              />
+              <div className="mt-3 flex justify-end">
+                <button onClick={() => sendReply(post)} disabled={!replyByPost[post.id]?.trim()} className="btn-primary gap-2"><Icon name="message" />Responder</button>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <EmptyState icon="message" title="Nao ha desabafos aguardando resposta" description="Quando existirem publicacoes reais sem resposta, elas aparecem aqui." />
+      )}
+    </div>
+  )
+}
+
+function ReviewsPage({ reviews }) {
+  const averageRating = average(reviews.map((review) => Number(review.nota)))
+  const distribution = [5, 4, 3, 2, 1].map((star) => ({ label: `${star} estrelas`, value: reviews.filter((review) => Number(review.nota) === star).length }))
+
+  return (
+    <div>
+      <SectionHeader title="Avaliacoes" description="Reputacao calculada diretamente da colecao reviews." />
+      <section className="mb-6 grid gap-4 md:grid-cols-3">
+        <StatCard label="Nota media" value={averageRating ? averageRating.toFixed(1) : '0'} icon="star" />
+        <StatCard label="Total de avaliacoes" value={reviews.length} icon="message" />
+        <StatCard label="Comentarios recentes" value={reviews.filter((item) => item.comentario).length} icon="file" />
+      </section>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="card p-5">
+          <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Distribuicao por estrelas</h2>
+          <SmallBarChart data={distribution} emptyText="Avaliacoes reais ainda nao foram registradas." />
+        </div>
+        <div className="card p-5">
+          <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Comentarios recentes</h2>
+          {reviews.some((item) => item.comentario) ? (
+            <div className="space-y-3">
+              {reviews.filter((item) => item.comentario).slice(0, 5).map((review) => (
+                <div key={review.id} className="rounded-lg border border-stone-200 p-3">
+                  <p className="text-sm text-stone-700">{review.comentario}</p>
+                  <p className="mt-2 text-xs text-stone-400">{review.nota || 0} estrelas - {formatDate(review.criadaEm)}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState icon="star" title="Sem comentarios" description="Os comentarios aparecem aqui quando pacientes avaliarem atendimentos." />
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function SchedulePage({ appointments, profile, user }) {
+  const [availability, setAvailability] = useState(profile?.disponibilidade || '')
+  const upcoming = appointments.filter((item) => !['concluida', 'finalizada', 'cancelada'].includes(item.status))
+
+  useEffect(() => {
+    setAvailability(profile?.disponibilidade || '')
+  }, [profile?.disponibilidade])
+
+  const saveAvailability = async () => {
+    await updateDoc(doc(db, 'users', user.uid), { disponibilidade: availability, atualizadoEm: serverTimestamp() })
+  }
+
+  return (
+    <div>
+      <SectionHeader title="Agenda" description="Agenda real baseada na colecao appointments e na disponibilidade do perfil." />
+      <div className="grid gap-4 lg:grid-cols-[380px_1fr]">
+        <div className="card p-5">
+          <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Disponibilidade semanal</h2>
+          <textarea className="input-field" rows={6} value={availability} onChange={(e) => setAvailability(e.target.value)} placeholder="Ex: Segunda a sexta, 18h as 21h" />
+          <button onClick={saveAvailability} className="btn-primary mt-3 w-full gap-2"><Icon name="save" />Editar horarios</button>
+        </div>
+        <div className="card p-5">
+          <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Proximos atendimentos</h2>
+          {upcoming.length ? (
+            <div className="space-y-3">
+              {upcoming.map((appointment) => (
+                <div key={appointment.id} className="rounded-lg border border-stone-200 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-medium text-stone-800">{appointment.pacienteNome || 'Paciente anonimo'}</p>
+                    <span className="badge border border-stone-200 bg-stone-50 text-stone-600">{appointment.status || 'agendada'}</span>
+                  </div>
+                  <p className="mt-1 text-sm text-stone-500">{formatDate(appointment.data)}</p>
+                  <p className="text-xs text-stone-400">{appointment.modalidade || profile?.atendimento || 'Modalidade nao informada'}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState icon="calendar" title="Agenda vazia" description="Nenhum atendimento real foi encontrado em appointments para este profissional." />
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function StatsPage({ data, metrics, user }) {
+  const byCategory = CATEGORIES.filter((item) => item !== 'Todas').map((category) => ({
+    label: category,
+    value: data.posts.filter((post) => post.categoria === category && (post.respostas || []).some((response) => response.autorUid === user.uid)).length,
+  }))
+  const requestData = REQUEST_STATUS.map((status) => ({ label: status, value: data.requests.filter((item) => (item.status || 'nova') === status).length }))
+  const weeklyResponses = [{ label: 'Respostas registradas', value: metrics.answeredMessages }]
+
+  return (
+    <div>
+      <SectionHeader title="Estatisticas" description="Graficos exibem apenas dados reais; quando nao ha base suficiente, mostram estado vazio." />
+      <section className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Solicitacoes recebidas" value={data.requests.length} icon="inbox" />
+        <StatCard label="Avaliacoes recebidas" value={data.reviews.length} icon="star" />
+        <StatCard label="Novos pacientes" value={metrics.helpedPatients} icon="users" />
+        <StatCard label="Respostas por semana" value={metrics.answeredMessages} icon="message" />
+      </section>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="card p-5">
+          <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Solicitacoes por status</h2>
+          <SmallBarChart data={requestData} emptyText="Nenhuma solicitacao real foi registrada." />
+        </div>
+        <div className="card p-5">
+          <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Categorias atendidas</h2>
+          <SmallBarChart data={byCategory} emptyText="Responda desabafos reais para gerar distribuicao por categoria." />
+        </div>
+        <div className="card p-5">
+          <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Atividade</h2>
+          <SmallBarChart data={weeklyResponses} emptyText="Ainda nao ha respostas reais para calcular atividade." />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function SettingsPage({ user, onNavigate }) {
+  const [email, setEmail] = useState(user?.email || '')
+  const [password, setPassword] = useState('')
+  const [message, setMessage] = useState('')
+
+  const changeEmail = async () => {
+    await updateEmail(user, email)
+    setMessage('E-mail atualizado.')
+  }
+
+  const changePassword = async () => {
+    await updatePassword(user, password)
+    setPassword('')
+    setMessage('Senha atualizada.')
+  }
+
+  const deleteAccount = async () => {
+    if (!window.confirm('Excluir sua conta permanentemente?')) return
+    await deleteDoc(doc(db, 'users', user.uid))
+    await deleteUser(user)
+  }
+
+  return (
+    <div>
+      <SectionHeader title="Configuracoes" description="Preferencias, seguranca e acoes de conta com execucao real no Firebase." />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="card p-5">
+          <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Dados da conta</h2>
+          <label className="label">E-mail</label>
+          <input className="input-field" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <button onClick={changeEmail} className="btn-primary mt-3 gap-2"><Icon name="save" />Alterar e-mail</button>
+        </div>
+        <div className="card p-5">
+          <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Seguranca</h2>
+          <label className="label">Nova senha</label>
+          <input type="password" className="input-field" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <button onClick={changePassword} disabled={password.length < 6} className="btn-primary mt-3 gap-2"><Icon name="lock" />Alterar senha</button>
+        </div>
+        <div className="card p-5">
+          <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Preferencias e privacidade</h2>
+          <p className="text-sm leading-relaxed text-stone-500">Notificacoes, privacidade, sessoes ativas e preferencias devem ser armazenadas no documento users quando a politica de produto definir os campos.</p>
+        </div>
+        <div className="card p-5">
+          <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Acoes da conta</h2>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => onNavigate('logout')} className="btn-secondary gap-2"><Icon name="logout" />Logout</button>
+            <button onClick={deleteAccount} className="btn-secondary gap-2 text-red-600"><Icon name="trash" />Excluir conta</button>
           </div>
         </div>
       </div>
-    </Card>
+      {message && <div className="mt-4 rounded-lg border border-sage-100 bg-sage-50 px-4 py-3 text-sm text-sage-700">{message}</div>}
+    </div>
   )
 }
 
-export default function ProfessionalHome({ user, profile, onNavigate }) {
-  const [loading, setLoading] = useState(true)
-  const displayName = profile?.nome || user?.displayName || 'Dr(a). Joao'
-  const areas = useMemo(
-    () => profile?.areas?.length ? profile.areas : ['Ansiedade', 'Autoestima', 'Relacionamentos', 'Terapia cognitivo-comportamental'],
-    [profile?.areas]
-  )
+export default function ProfessionalHome({ user, profile, activePage = 'home', onNavigate }) {
+  const data = useProfessionalData(user)
+  const metrics = useMemo(() => buildMetrics(data, user?.uid), [data, user?.uid])
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => setLoading(false), 500)
-    return () => window.clearTimeout(timer)
-  }, [])
+  const renderPage = useCallback(() => {
+    switch (activePage) {
+      case 'profile':
+        return <ProfilePage user={user} profile={profile} onNavigate={onNavigate} />
+      case 'requests':
+        return <RequestsPage requests={data.requests} />
+      case 'community':
+        return <CommunityPage posts={data.posts} savedIds={data.savedIds} user={user} />
+      case 'answer':
+        return <AnswerPage posts={data.posts} user={user} />
+      case 'reviews':
+        return <ReviewsPage reviews={data.reviews} />
+      case 'schedule':
+        return <SchedulePage appointments={data.appointments} profile={profile} user={user} />
+      case 'stats':
+        return <StatsPage data={data} metrics={metrics} user={user} />
+      case 'settings':
+        return <SettingsPage user={user} onNavigate={onNavigate} />
+      default:
+        return <OverviewPage user={user} profile={profile} data={data} metrics={metrics} onNavigate={onNavigate} />
+    }
+  }, [activePage, data, metrics, onNavigate, profile, user])
 
-  return (
-    <div className="space-y-6">
-      <section className="overflow-hidden rounded-lg border border-stone-200 bg-white shadow-soft">
-        <div className="grid gap-6 p-6 lg:grid-cols-[1fr_340px] lg:p-7">
-          <div>
-            <span className="inline-flex items-center gap-2 rounded-full border border-brand-100 bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700">
-              <Icon name="shield" className="h-3.5 w-3.5" />
-              Central profissional SafeTalk
-            </span>
-            <h1 className="mt-5 max-w-3xl font-sans text-3xl font-semibold tracking-normal text-stone-950 md:text-4xl">
-              Ola, {displayName}.
-            </h1>
-            <p className="mt-3 max-w-2xl text-base leading-relaxed text-stone-600">
-              Hoje voce possui <strong className="text-stone-950">4 novas solicitacoes</strong> e respondeu <strong className="text-stone-950">18 pessoas</strong> nesta semana.
-            </p>
-
-            <div className="mt-6 flex flex-wrap gap-2">
-              <button onClick={() => onNavigate('profile')} className="btn-primary gap-2"><Icon name="edit" />Editar Perfil</button>
-              <button onClick={() => onNavigate('requests')} className="btn-secondary gap-2"><Icon name="inbox" />Ver Solicitacoes</button>
-              <button onClick={() => onNavigate('community')} className="btn-secondary gap-2"><Icon name="message" />Responder Comunidade</button>
-              <button onClick={() => onNavigate('schedule')} className="btn-secondary gap-2"><Icon name="calendar" />Minha Agenda</button>
-            </div>
+  if (data.loading) {
+    return (
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 8 }, (_, index) => (
+          <div key={index} className="h-32 animate-pulse rounded-lg border border-stone-200 bg-white p-4">
+            <div className="mb-5 h-8 w-8 rounded-lg bg-stone-100" />
+            <div className="mb-3 h-5 w-20 rounded bg-stone-100" />
+            <div className="h-3 w-28 rounded bg-stone-100" />
           </div>
+        ))}
+      </div>
+    )
+  }
 
-          <div className="rounded-lg border border-stone-200 bg-stone-50 p-4">
-            <div className="mb-4 flex items-center justify-between">
-              <p className="text-sm font-semibold text-stone-900">Perfil 82% completo</p>
-              <span className="badge border border-sage-100 bg-sage-50 text-sage-700">Ativo</span>
-            </div>
-            <ProgressBar value={82} />
-            <p className="mt-4 text-sm leading-relaxed text-stone-500">
-              Faltam disponibilidade detalhada, biografia revisada e comprovacao final do registro.
-            </p>
-            <button className="btn-secondary mt-4 w-full gap-2">
-              <Icon name="zap" />
-              Completar Perfil
-            </button>
-=======
-import Icon from '../components/Icon'
-
-const profileTips = [
-  'Mantenha areas de atuacao e abordagem claras.',
-  'Use uma descricao breve, humana e objetiva.',
-  'Inclua disponibilidade para reduzir mensagens desencontradas.',
-]
-
-export default function ProfessionalHome({ user, profile, onNavigate }) {
-  const displayName = profile?.nome || user?.displayName || 'profissional'
-  const areas = profile?.areas?.length ? profile.areas : [profile?.especialidade].filter(Boolean)
-
-  return (
-    <div className="space-y-6">
-      <section className="rounded-lg bg-stone-900 text-white p-6 md:p-7 overflow-hidden relative">
-        <div className="relative z-10">
-          <span className="inline-flex items-center gap-2 text-xs font-medium text-brand-100 bg-white/10 border border-white/10 px-3 py-1.5 rounded-full">
-            <Icon name="shield" className="w-3.5 h-3.5" />
-            Painel profissional
-          </span>
-          <h1 className="font-serif text-3xl mt-4 mb-2">Ola, {displayName}</h1>
-          <p className="text-stone-300 text-sm leading-relaxed max-w-xl">
-            Esta area e pensada para quem oferece suporte. Aqui voce acompanha seu perfil, entende como aparece no diretorio e pode participar da comunidade com cuidado.
-          </p>
-        </div>
-        <div className="absolute -right-10 -bottom-14 w-48 h-48 rounded-full border border-white/10" />
-      </section>
-
-      <section className="grid md:grid-cols-3 gap-3">
-        <div className="card p-4">
-          <Icon name="users" className="w-5 h-5 text-brand-600 mb-3" />
-          <p className="font-serif text-2xl text-stone-900">{areas.length || 0}</p>
-          <p className="text-xs text-stone-500">areas no perfil</p>
-        </div>
-        <div className="card p-4">
-          <Icon name="mail" className="w-5 h-5 text-sage-600 mb-3" />
-          <p className="font-serif text-2xl text-stone-900">{profile?.atendimento || 'Online'}</p>
-          <p className="text-xs text-stone-500">tipo de atendimento</p>
-        </div>
-        <div className="card p-4">
-          <Icon name="star" className="w-5 h-5 text-amber-500 mb-3" />
-          <p className="font-serif text-2xl text-stone-900">{profile?.media ? profile.media.toFixed(1) : 'Novo'}</p>
-          <p className="text-xs text-stone-500">avaliacao</p>
-        </div>
-      </section>
-
-      <section className="card p-5">
-        <div className="flex items-start justify-between gap-4 mb-4">
-          <div>
-            <h2 className="font-serif text-xl text-stone-900 mb-1">Como seu perfil aparece</h2>
-            <p className="text-sm text-stone-500">Essas informacoes ajudam pacientes a entender seu trabalho antes do primeiro contato.</p>
-          </div>
-          <span className="badge bg-sage-50 text-sage-700 border border-sage-100">
-            <Icon name="check" className="w-3 h-3" />
-            Verificado
-          </span>
-        </div>
-
-        <div className="rounded-lg border border-stone-200 p-4">
-          <div className="flex items-start gap-3">
-            <div className="w-12 h-12 rounded-lg bg-stone-900 text-white flex items-center justify-center font-serif">
-              {displayName.split(' ').map((item) => item[0]).slice(0, 2).join('').toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-medium text-stone-900">{displayName}</h3>
-              <p className="text-sm text-brand-700 font-medium">{profile?.especialidade || areas[0] || 'Profissional de apoio'}</p>
-              {profile?.crp && <p className="text-xs text-stone-400 mt-1">{profile.crp}</p>}
-              {areas.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-3">
-                  {areas.slice(0, 4).map((area) => (
-                    <span key={area} className="badge bg-stone-50 text-stone-600 border border-stone-200">
-                      {area}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
->>>>>>> 27459c9d8e4e689f25ee4b5060eae98e0a4115e8
-          </div>
-        </div>
-      </section>
-
-<<<<<<< HEAD
-      {loading ? (
-        <SkeletonLoading />
-      ) : (
-        <section id="stats" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {stats.map((item) => <StatCard key={item.label} item={item} />)}
-        </section>
-      )}
-
-      <section className="grid gap-4 lg:grid-cols-12">
-        <PublicProfilePreview displayName={displayName} profile={profile} areas={areas} />
-
-        <Card className="lg:col-span-5">
-          <SectionTitle icon="check" title="Proximas pendencias" description="Tarefas para deixar seu perfil mais confiavel." />
-          <div className="space-y-4">
-            {tasks.map((task) => (
-              <div key={task.label}>
-                <div className="mb-2 flex items-center justify-between gap-3">
-                  <p className="text-sm font-medium text-stone-700">{task.label}</p>
-                  <span className="text-xs text-stone-400">{task.progress}%</span>
-                </div>
-                <ProgressBar value={task.progress} />
-              </div>
-            ))}
-          </div>
-        </Card>
-      </section>
-
-      <section className="grid gap-4 lg:grid-cols-3">
-        <Card id="requests" className="lg:col-span-2">
-          <SectionTitle icon="inbox" title="Solicitacoes recentes" description="Pedidos e interacoes que precisam de resposta rapida." />
-          <div className="space-y-3">
-            {requests.map((request) => (
-              <div key={request.name} className="flex flex-col gap-3 rounded-lg border border-stone-200 p-4 transition hover:border-brand-100 hover:bg-brand-50/30 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                  <p className="text-sm text-stone-700"><strong className="text-stone-950">{request.name}</strong> {request.text}</p>
-                  <p className="mt-1 text-xs text-stone-400">{request.time}</p>
-                </div>
-                <button className="btn-secondary px-3 py-2 text-xs">{request.action}</button>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card id="answer">
-          <SectionTitle icon="message" title="Comunidade" description="Resumo do que esta acontecendo no feed." />
-          <div className="space-y-3">
-            {community.map((item) => (
-              <div key={item.label} className="flex items-center justify-between rounded-lg border border-stone-200 p-3">
-                <div className="flex items-center gap-3">
-                  <Icon name={item.icon} className="h-4 w-4 text-brand-600" />
-                  <p className="text-sm text-stone-600">{item.label}</p>
-                </div>
-                <p className="text-sm font-semibold text-stone-950">{item.value}</p>
-              </div>
-            ))}
-          </div>
-          <button onClick={() => onNavigate('community')} className="btn-primary mt-4 w-full gap-2">
-            Ir para comunidade
-            <Icon name="chevronRight" />
-          </button>
-        </Card>
-      </section>
-
-      <section className="grid gap-4 lg:grid-cols-12">
-        <Card id="schedule" className="lg:col-span-4">
-          <SectionTitle icon="calendar" title="Agenda" description="Proximos horarios e disponibilidade." />
-          <div className="mb-4 grid grid-cols-7 gap-1 text-center text-xs text-stone-400">
-            {['S', 'T', 'Q', 'Q', 'S', 'S', 'D'].map((day, index) => (
-              <span key={`${day}-${index}`} className="py-1">{day}</span>
-            ))}
-            {Array.from({ length: 28 }, (_, index) => (
-              <button key={index} className={`aspect-square rounded-lg text-xs transition ${[2, 8, 15, 23].includes(index) ? 'bg-brand-600 text-white' : 'bg-stone-50 text-stone-500 hover:bg-stone-100'}`}>
-                {index + 1}
-              </button>
-            ))}
-          </div>
-          <div className="space-y-2">
-            {schedule.map((item) => (
-              <div key={item.hour} className="flex items-center gap-3 rounded-lg border border-stone-200 p-3">
-                <span className="text-sm font-semibold text-stone-950">{item.hour}</span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm text-stone-700">{item.title}</p>
-                  <p className="text-xs text-stone-400">{item.mode}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card id="reviews" className="lg:col-span-4">
-          <SectionTitle icon="star" title="Avaliacoes" description="Reputacao e comentarios recentes." />
-          <div className="mb-5 flex items-end gap-3">
-            <p className="text-5xl font-semibold text-stone-950">4.9</p>
-            <div className="pb-1">
-              <p className="text-sm text-amber-500">★★★★★</p>
-              <p className="text-xs text-stone-400">38 avaliacoes publicas</p>
-            </div>
-          </div>
-          <div className="rounded-lg border border-stone-200 bg-stone-50 p-4">
-            <p className="text-sm leading-relaxed text-stone-600">
-              "Escuta muito cuidadosa e orientacoes claras para os proximos passos."
-            </p>
-          </div>
-          <button className="btn-secondary mt-4 w-full gap-2">Ver avaliacoes <Icon name="chevronRight" /></button>
-        </Card>
-
-        <Card className="lg:col-span-4">
-          <SectionTitle icon="trend" title="Insights" description="Desempenho do seu trabalho na plataforma." />
-          <div className="space-y-3 text-sm text-stone-600">
-            <p>Voce respondeu <strong className="text-stone-950">28 pessoas</strong> este mes.</p>
-            <p>Seu perfil recebeu <strong className="text-stone-950">+42% visitas</strong>.</p>
-            <p>Tempo medio de resposta: <strong className="text-stone-950">18 minutos</strong>.</p>
-            <p className="rounded-lg border border-sage-100 bg-sage-50 p-3 text-sage-800">Voce esta entre os profissionais mais ativos.</p>
-          </div>
-        </Card>
-      </section>
-
-      <section className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <SectionTitle icon="award" title="Objetivos" description="Metas pequenas para aumentar confianca e produtividade." />
-          <div className="space-y-3">
-            {goals.map((goal, index) => (
-              <div key={goal} className="flex items-center gap-3 rounded-lg border border-stone-200 p-3">
-                <span className={`flex h-7 w-7 items-center justify-center rounded-lg ${index < 3 ? 'bg-sage-50 text-sage-700' : 'bg-stone-50 text-stone-400'}`}>
-                  <Icon name={index < 3 ? 'check' : 'clock'} className="h-4 w-4" />
-                </span>
-                <p className="text-sm font-medium text-stone-700">{goal}</p>
-              </div>
-            ))}
-          </div>
-          <div className="mt-5">
-            <div className="mb-2 flex items-center justify-between text-sm">
-              <span className="font-medium text-stone-700">Progresso geral</span>
-              <span className="text-stone-400">62%</span>
-            </div>
-            <ProgressBar value={62} />
-          </div>
-        </Card>
-
-        <Card id="settings">
-          <SectionTitle icon="zap" title="Acoes rapidas" description="Atalhos para as tarefas mais frequentes." />
-          <div className="grid gap-3 sm:grid-cols-2">
-            {quickActions.map((action) => (
-              <button key={action.label} className="group flex items-center justify-between rounded-lg border border-stone-200 bg-white p-4 text-left transition hover:border-brand-100 hover:bg-brand-50/40">
-                <span className="flex items-center gap-3 text-sm font-medium text-stone-700">
-                  <Icon name={action.icon} className="h-4 w-4 text-brand-600" />
-                  {action.label}
-                </span>
-                <Icon name="chevronRight" className="h-4 w-4 text-stone-300 transition group-hover:text-brand-600" />
-              </button>
-            ))}
-          </div>
-
-          <div className="mt-5 rounded-lg border border-dashed border-stone-300 bg-stone-50 p-4">
-            <div className="flex items-start gap-3">
-              <Icon name="bell" className="mt-0.5 h-4 w-4 text-brand-600" />
-              <div>
-                <p className="text-sm font-semibold text-stone-900">Feedback visual</p>
-                <p className="mt-1 text-sm leading-relaxed text-stone-500">
-                  Estados de carregamento, hover, progresso e confirmacoes foram adicionados para deixar o painel mais responsivo e confiavel.
-                </p>
-              </div>
-            </div>
-          </div>
-        </Card>
-=======
-      <section className="grid md:grid-cols-[1fr_0.9fr] gap-4">
-        <div className="card p-5">
-          <h2 className="font-serif text-xl text-stone-900 mb-4">Proximos cuidados</h2>
-          <div className="space-y-3">
-            {profileTips.map((tip) => (
-              <p key={tip} className="flex items-start gap-2 text-sm text-stone-600">
-                <Icon name="check" className="w-4 h-4 text-sage-600 mt-0.5 flex-shrink-0" />
-                {tip}
-              </p>
-            ))}
-          </div>
-        </div>
-
-        <div className="card p-5">
-          <h2 className="font-serif text-xl text-stone-900 mb-2">Comunidade</h2>
-          <p className="text-sm text-stone-500 leading-relaxed mb-4">
-            Voce tambem pode ler o feed e responder quando fizer sentido, mantendo uma postura acolhedora e sem diagnosticar.
-          </p>
-          <button onClick={() => onNavigate('community')} className="btn-secondary w-full gap-2">
-            <Icon name="message" className="w-4 h-4" />
-            Ver feed da comunidade
-          </button>
-        </div>
->>>>>>> 27459c9d8e4e689f25ee4b5060eae98e0a4115e8
-      </section>
-    </div>
-  )
+  return <div className="space-y-6">{renderPage()}</div>
 }

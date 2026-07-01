@@ -23,15 +23,19 @@ import {
   MessageCircle,
   PenLine,
   Plus,
+  RefreshCw,
+  Save,
   Search,
   Settings,
   Shield,
   Sparkles,
   Star,
   TrendingUp,
+  Trash2,
   User,
   Users,
   Video,
+  X,
   Zap,
   BarChart3,
 } from 'lucide-react'
@@ -72,6 +76,10 @@ const icons = {
   bell: Bell,
   award: Award,
   zap: Zap,
+  save: Save,
+  trash: Trash2,
+  x: X,
+  refresh: RefreshCw,
 }
 
 export default function Icon({ name, className = 'w-4 h-4', filled = false }) {
@@ -84,3 +92,5 @@ export default function Icon({ name, className = 'w-4 h-4', filled = false }) {
       strokeWidth={1.8}
       aria-hidden="true"
     />
+  )
+}
