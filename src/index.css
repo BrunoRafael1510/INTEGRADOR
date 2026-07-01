@@ -29,23 +29,23 @@
 
 @layer components {
   .btn-primary {
-    @apply bg-brand-500 hover:bg-brand-600 text-white font-medium px-5 py-2.5 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md active:scale-95;
+    @apply inline-flex items-center justify-center bg-brand-600 hover:bg-brand-700 text-white font-medium px-5 py-2.5 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed;
   }
 
   .btn-secondary {
-    @apply bg-white border border-stone-200 hover:border-stone-300 text-stone-700 font-medium px-5 py-2.5 rounded-xl transition-all duration-200 hover:shadow-sm active:scale-95;
+    @apply inline-flex items-center justify-center bg-white border border-stone-200 hover:border-stone-300 text-stone-700 font-medium px-5 py-2.5 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-95;
   }
 
   .btn-ghost {
-    @apply text-stone-500 hover:text-stone-800 hover:bg-stone-100 font-medium px-4 py-2 rounded-xl transition-all duration-200;
+    @apply inline-flex items-center justify-center text-stone-500 hover:text-stone-800 hover:bg-stone-100 font-medium px-4 py-2 rounded-lg transition-all duration-200;
   }
 
   .card {
-    @apply bg-white rounded-2xl border border-stone-100 shadow-soft;
+    @apply bg-white rounded-lg border border-stone-200 shadow-soft;
   }
 
   .input-field {
-    @apply w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand-400 transition-all duration-200 text-sm;
+    @apply w-full bg-white border border-stone-200 rounded-lg px-4 py-3 text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-500 transition-all duration-200 text-sm;
   }
 
   .label {
@@ -53,7 +53,7 @@
   }
 
   .sidebar-link {
-    @apply flex items-center gap-3 px-3 py-2.5 rounded-xl text-stone-500 hover:text-stone-800 hover:bg-stone-100 transition-all duration-200 font-medium text-sm cursor-pointer;
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-stone-500 hover:text-stone-800 hover:bg-stone-100 transition-all duration-200 font-medium text-sm cursor-pointer;
   }
 
   .sidebar-link.active {
@@ -61,7 +61,7 @@
   }
 
   .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium;
   }
 }
 

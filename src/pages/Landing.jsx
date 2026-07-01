@@ -1,32 +1,32 @@
-// src/pages/Landing.jsx
 import { useNavigate } from 'react-router-dom'
+import Icon from '../components/Icon'
 
 const features = [
   {
-    icon: '🔒',
-    title: 'Anonimato Total',
-    desc: 'Seus desabafos são publicados sem identificação. Você escolhe o quanto compartilha.',
+    icon: 'lock',
+    title: 'Anonimato real',
+    desc: 'Seus desabafos aparecem sem identificacao publica. Voce escolhe o quanto compartilha.',
   },
   {
-    icon: '💬',
-    title: 'Apoio Real',
-    desc: 'Receba respostas de pessoas que passaram por situações parecidas. Sem julgamentos.',
+    icon: 'message',
+    title: 'Apoio da comunidade',
+    desc: 'Receba respostas de pessoas dispostas a ouvir com cuidado e sem julgamento.',
   },
   {
-    icon: '🩺',
-    title: 'Profissionais',
-    desc: 'Quando estiver pronto, conecte-se com psicólogos e terapeutas verificados.',
+    icon: 'users',
+    title: 'Diretorio profissional',
+    desc: 'Quando quiser, encontre profissionais por area, abordagem e disponibilidade.',
   },
   {
-    icon: '🤖',
-    title: 'IA Acolhedora',
-    desc: 'Nossa IA ajuda a reformular respostas para que sejam mais empáticas e gentis.',
+    icon: 'spark',
+    title: 'IA acolhedora',
+    desc: 'A IA ajuda a reformular respostas para que soem mais gentis e empaticas.',
   },
 ]
 
 const categories = [
-  'Ansiedade', 'Família', 'Relacionamentos', 'Trabalho',
-  'Solidão', 'Luto', 'Autoestima', 'Outros',
+  'Ansiedade', 'Familia', 'Relacionamentos', 'Trabalho',
+  'Solidao', 'Luto', 'Autoestima', 'Outros',
 ]
 
 export default function Landing({ user }) {
@@ -34,8 +34,7 @@ export default function Landing({ user }) {
 
   return (
     <div className="min-h-screen bg-stone-50 font-sans">
-      {/* ── Navbar ── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-stone-100">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/85 backdrop-blur-md border-b border-stone-200">
         <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
           <span className="font-serif text-2xl text-stone-900">SafeTalk</span>
           <div className="flex items-center gap-3">
@@ -49,7 +48,7 @@ export default function Landing({ user }) {
                   Entrar
                 </button>
                 <button onClick={() => navigate('/cadastro')} className="btn-primary">
-                  Começar agora
+                  Comecar agora
                 </button>
               </>
             )}
@@ -57,48 +56,65 @@ export default function Landing({ user }) {
         </div>
       </nav>
 
-      {/* ── Hero ── */}
-      <section className="pt-32 pb-20 px-6">
-        <div className="max-w-3xl mx-auto text-center animate-fade-in">
-          {/* Aviso discreto */}
-          <span className="inline-flex items-center gap-2 bg-brand-50 text-brand-600 text-xs font-medium px-3 py-1.5 rounded-full mb-8">
-            <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse-soft" />
-            Um espaço seguro para se expressar
-          </span>
+      <section className="pt-32 pb-16 px-6">
+        <div className="max-w-4xl mx-auto grid lg:grid-cols-[1.1fr_0.9fr] gap-10 items-center animate-fade-in">
+          <div>
+            <span className="inline-flex items-center gap-2 bg-brand-50 text-brand-700 border border-brand-100 text-xs font-medium px-3 py-1.5 rounded-full mb-8">
+              <Icon name="shield" className="w-3.5 h-3.5" />
+              Um espaco seguro para se expressar
+            </span>
 
-          <h1 className="text-5xl md:text-6xl text-stone-900 leading-tight mb-6">
-            Você não precisa
-            <br />
-            <em className="text-brand-500 not-italic">carregar isso</em> sozinho.
-          </h1>
+            <h1 className="text-5xl md:text-6xl text-stone-900 leading-tight mb-6">
+              SafeTalk
+            </h1>
 
-          <p className="text-lg text-stone-500 max-w-xl mx-auto mb-10 leading-relaxed">
-            O SafeTalk é um ambiente anônimo e sem julgamentos para desabafar, receber apoio e, quando quiser, se conectar com profissionais de saúde mental.
-          </p>
+            <p className="text-lg text-stone-500 max-w-xl mb-10 leading-relaxed">
+              Um ambiente anonimo e sem julgamentos para desabafar, receber apoio e, quando fizer sentido, se conectar com profissionais de saude mental.
+            </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <button
-              onClick={() => navigate('/cadastro')}
-              className="btn-primary text-base px-8 py-3"
-            >
-              Criar conta grátis
-            </button>
-            <button
-              onClick={() => navigate('/login')}
-              className="btn-secondary text-base px-8 py-3"
-            >
-              Já tenho conta
-            </button>
+            <div className="flex flex-col sm:flex-row items-start gap-3">
+              <button
+                onClick={() => navigate('/cadastro')}
+                className="btn-primary text-base px-8 py-3"
+              >
+                Criar conta gratis
+              </button>
+              <button
+                onClick={() => navigate('/login')}
+                className="btn-secondary text-base px-8 py-3"
+              >
+                Ja tenho conta
+              </button>
+            </div>
+
+            <p className="mt-6 text-xs text-stone-400 flex items-center gap-1.5">
+              <Icon name="alert" className="w-3.5 h-3.5" />
+              O SafeTalk nao substitui acompanhamento psicologico ou psiquiatrico profissional.
+            </p>
           </div>
 
-          <p className="mt-6 text-xs text-stone-400">
-            ⚠️ O SafeTalk não substitui acompanhamento psicológico ou psiquiátrico profissional.
-          </p>
+          <div className="card p-5 bg-white">
+            <div className="rounded-lg bg-stone-900 text-white p-5 mb-4">
+              <p className="text-xs text-stone-300 mb-3">Feed anonimo</p>
+              <p className="text-sm leading-relaxed text-stone-100">
+                "Hoje foi dificil, mas escrever aqui me ajudou a organizar o que eu estava sentindo."
+              </p>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-start gap-3 rounded-lg border border-stone-200 p-3">
+                <Icon name="message" className="w-4 h-4 text-brand-600 mt-0.5" />
+                <p className="text-sm text-stone-600">Respostas empaticas de outras pessoas da comunidade.</p>
+              </div>
+              <div className="flex items-start gap-3 rounded-lg border border-stone-200 p-3">
+                <Icon name="users" className="w-4 h-4 text-sage-600 mt-0.5" />
+                <p className="text-sm text-stone-600">Profissionais organizados por area de atuacao.</p>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* ── Features ── */}
-      <section className="py-16 px-6 bg-white border-y border-stone-100">
+      <section className="py-16 px-6 bg-white border-y border-stone-200">
         <div className="max-w-5xl mx-auto">
           <h2 className="font-serif text-3xl text-stone-900 text-center mb-12">
             Feito para quem precisa ser ouvido
@@ -106,7 +122,9 @@ export default function Landing({ user }) {
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {features.map((f) => (
               <div key={f.title} className="card p-6 hover:shadow-card transition-shadow duration-300">
-                <div className="text-3xl mb-4">{f.icon}</div>
+                <div className="w-10 h-10 rounded-lg bg-brand-50 text-brand-700 border border-brand-100 flex items-center justify-center mb-4">
+                  <Icon name={f.icon} className="w-5 h-5" />
+                </div>
                 <h3 className="font-sans font-semibold text-stone-800 mb-2">{f.title}</h3>
                 <p className="text-stone-500 text-sm leading-relaxed">{f.desc}</p>
               </div>
@@ -115,21 +133,20 @@ export default function Landing({ user }) {
         </div>
       </section>
 
-      {/* ── Categories ── */}
       <section className="py-16 px-6">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="font-serif text-3xl text-stone-900 mb-4">
             Explore por categoria
           </h2>
           <p className="text-stone-500 mb-10">
-            Encontre pessoas que entendem o que você está passando.
+            Encontre pessoas que entendem algo parecido com o que voce esta passando.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             {categories.map((cat) => (
               <button
                 key={cat}
                 onClick={() => navigate('/cadastro')}
-                className="px-4 py-2 bg-white border border-stone-200 hover:border-brand-300 hover:text-brand-600 rounded-xl text-sm text-stone-600 transition-all duration-200"
+                className="px-4 py-2 bg-white border border-stone-200 hover:border-brand-300 hover:text-brand-600 rounded-full text-sm text-stone-600 transition-all duration-200"
               >
                 {cat}
               </button>
@@ -138,29 +155,27 @@ export default function Landing({ user }) {
         </div>
       </section>
 
-      {/* ── CTA final ── */}
-      <section className="py-20 px-6 bg-brand-500">
+      <section className="py-16 px-6 bg-stone-900">
         <div className="max-w-2xl mx-auto text-center">
           <h2 className="font-serif text-4xl text-white mb-4">
-            Pronto para dar o primeiro passo?
+            Comece do jeito que fizer sentido hoje.
           </h2>
-          <p className="text-brand-100 mb-8 text-lg">
-            É grátis, anônimo e sem julgamentos.
+          <p className="text-stone-300 mb-8 text-lg">
+            Voce pode apenas ler, desabafar ou procurar ajuda profissional.
           </p>
           <button
             onClick={() => navigate('/cadastro')}
-            className="bg-white text-brand-600 font-semibold px-8 py-3 rounded-xl hover:bg-brand-50 transition-colors duration-200 shadow-md"
+            className="bg-white text-stone-900 font-semibold px-8 py-3 rounded-lg hover:bg-stone-100 transition-colors duration-200 shadow-md"
           >
             Criar conta agora
           </button>
         </div>
       </section>
 
-      {/* ── Footer ── */}
-      <footer className="py-8 px-6 border-t border-stone-100 text-center text-stone-400 text-sm">
-        <p>© {new Date().getFullYear()} SafeTalk · Feito com cuidado 💙</p>
+      <footer className="py-8 px-6 border-t border-stone-200 text-center text-stone-400 text-sm">
+        <p>© {new Date().getFullYear()} SafeTalk · Feito com cuidado</p>
         <p className="mt-1 text-xs">
-          Este serviço não substitui atendimento psicológico ou psiquiátrico profissional.
+          Este servico nao substitui atendimento psicologico ou psiquiatrico profissional.
         </p>
       </footer>
     </div>

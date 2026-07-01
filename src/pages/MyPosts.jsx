@@ -1,8 +1,8 @@
-// src/pages/MyPosts.jsx
 import { useState, useEffect } from 'react'
 import { collection, query, where, orderBy, onSnapshot, doc, deleteDoc } from 'firebase/firestore'
 import { db } from '../services/firebase'
 import PostCard from '../components/PostCard'
+import Icon from '../components/Icon'
 
 export default function MyPosts({ user }) {
   const [posts, setPosts] = useState([])
@@ -42,19 +42,18 @@ export default function MyPosts({ user }) {
     <div>
       <div className="mb-6">
         <h1 className="font-serif text-2xl text-stone-900 mb-1">Meus desabafos</h1>
-        <p className="text-stone-500 text-sm">Tudo que você compartilhou, em um só lugar.</p>
+        <p className="text-stone-500 text-sm">Tudo que voce compartilhou, em um so lugar.</p>
       </div>
 
-      {/* Stats */}
       {!loading && posts.length > 0 && (
         <div className="grid grid-cols-3 gap-3 mb-6">
           {[
-            { label: 'Publicados', value: posts.length, icon: '📝' },
-            { label: 'Respostas recebidas', value: totalRespostas, icon: '💬' },
-            { label: 'Curtidas', value: totalCurtidas, icon: '💙' },
+            { label: 'Publicados', value: posts.length, icon: 'file' },
+            { label: 'Respostas', value: totalRespostas, icon: 'message' },
+            { label: 'Curtidas', value: totalCurtidas, icon: 'heart' },
           ].map(stat => (
             <div key={stat.label} className="card p-4 text-center">
-              <p className="text-xl mb-1">{stat.icon}</p>
+              <Icon name={stat.icon} className="w-5 h-5 mx-auto mb-2 text-brand-600" />
               <p className="font-serif text-2xl text-stone-800">{stat.value}</p>
               <p className="text-xs text-stone-400 mt-0.5">{stat.label}</p>
             </div>
@@ -62,7 +61,6 @@ export default function MyPosts({ user }) {
         </div>
       )}
 
-      {/* Lista */}
       {loading ? (
         <div className="space-y-4">
           {[1, 2].map(i => (
@@ -74,9 +72,11 @@ export default function MyPosts({ user }) {
           ))}
         </div>
       ) : posts.length === 0 ? (
-        <div className="card p-12 text-center">
-          <p className="text-4xl mb-3">📝</p>
-          <p className="font-serif text-lg text-stone-700 mb-1">Você ainda não publicou nada</p>
+        <div className="card p-10 text-center">
+          <div className="w-12 h-12 rounded-lg bg-stone-100 text-stone-500 mx-auto mb-4 flex items-center justify-center">
+            <Icon name="file" className="w-6 h-6" />
+          </div>
+          <p className="font-serif text-lg text-stone-800 mb-1">Voce ainda nao publicou nada</p>
           <p className="text-stone-400 text-sm">Quando quiser desabafar, estamos aqui.</p>
         </div>
       ) : (
@@ -87,7 +87,7 @@ export default function MyPosts({ user }) {
               <button
                 onClick={() => handleDeletar(post.id)}
                 disabled={deletando === post.id}
-                className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity text-xs text-stone-300 hover:text-red-400 bg-white px-2 py-1 rounded-lg border border-stone-100 shadow-sm"
+                className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity text-xs text-stone-400 hover:text-red-500 bg-white px-2 py-1 rounded-lg border border-stone-200 shadow-sm"
               >
                 {deletando === post.id ? '...' : 'Remover'}
               </button>

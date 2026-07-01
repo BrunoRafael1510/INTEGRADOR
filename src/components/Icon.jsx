@@ -1,0 +1,88 @@
+import {
+  Activity,
+  AlertTriangle,
+  Award,
+  Bell,
+  Calendar,
+  Check,
+  ChevronRight,
+  Clock,
+  Edit3,
+  Eye,
+  FileText,
+  Filter,
+  Flag,
+  Heart,
+  Home,
+  Inbox,
+  Lock,
+  LogOut,
+  Mail,
+  Map,
+  Menu,
+  MessageCircle,
+  PenLine,
+  Plus,
+  Search,
+  Settings,
+  Shield,
+  Sparkles,
+  Star,
+  TrendingUp,
+  User,
+  Users,
+  Video,
+  Zap,
+  BarChart3,
+} from 'lucide-react'
+
+const icons = {
+  home: Home,
+  edit: Edit3,
+  users: Users,
+  file: FileText,
+  shield: Shield,
+  search: Search,
+  heart: Heart,
+  message: MessageCircle,
+  flag: Flag,
+  lock: Lock,
+  spark: Sparkles,
+  alert: AlertTriangle,
+  check: Check,
+  mail: Mail,
+  menu: Menu,
+  logout: LogOut,
+  star: Star,
+  plus: Plus,
+  filter: Filter,
+  user: User,
+  inbox: Inbox,
+  pen: PenLine,
+  calendar: Calendar,
+  chart: BarChart3,
+  settings: Settings,
+  clock: Clock,
+  eye: Eye,
+  activity: Activity,
+  trend: TrendingUp,
+  map: Map,
+  video: Video,
+  chevronRight: ChevronRight,
+  bell: Bell,
+  award: Award,
+  zap: Zap,
+}
+
+export default function Icon({ name, className = 'w-4 h-4', filled = false }) {
+  const LucideIcon = icons[name] || Sparkles
+
+  return (
+    <LucideIcon
+      className={className}
+      fill={filled ? 'currentColor' : 'none'}
+      strokeWidth={1.8}
+      aria-hidden="true"
+    />
+  )
+}

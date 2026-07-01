@@ -1,18 +1,26 @@
-// src/components/PostCard.jsx
 import { useState } from 'react'
-import { collection, addDoc, serverTimestamp, doc, updateDoc, increment, arrayUnion, arrayRemove } from 'firebase/firestore'
+import { doc, updateDoc, increment, arrayUnion, arrayRemove } from 'firebase/firestore'
 import { db } from '../services/firebase'
 import { moderarTexto, reformularResposta } from '../services/ai'
+import Icon from './Icon'
 
 const CATEGORY_COLORS = {
-  'Ansiedade': 'bg-purple-50 text-purple-600 border-purple-100',
-  'Família':   'bg-orange-50 text-orange-600 border-orange-100',
-  'Relacionamentos': 'bg-pink-50 text-pink-600 border-pink-100',
-  'Trabalho':  'bg-blue-50 text-blue-600 border-blue-100',
-  'Solidão':   'bg-indigo-50 text-indigo-600 border-indigo-100',
-  'Luto':      'bg-stone-100 text-stone-600 border-stone-200',
-  'Autoestima':'bg-yellow-50 text-yellow-600 border-yellow-100',
-  'Outros':    'bg-sage-50 text-sage-600 border-sage-100',
+  Ansiedade: 'bg-violet-50 text-violet-700 border-violet-100',
+  Familia: 'bg-orange-50 text-orange-700 border-orange-100',
+  Relacionamentos: 'bg-rose-50 text-rose-700 border-rose-100',
+  Trabalho: 'bg-blue-50 text-blue-700 border-blue-100',
+  Solidao: 'bg-indigo-50 text-indigo-700 border-indigo-100',
+  Luto: 'bg-stone-100 text-stone-700 border-stone-200',
+  Autoestima: 'bg-amber-50 text-amber-700 border-amber-100',
+  Outros: 'bg-sage-50 text-sage-700 border-sage-100',
+}
+
+function normalizeCategory(category) {
+  const map = {
+    'Família': 'Familia',
+    'Solidão': 'Solidao',
+  }
+  return map[category] || category
 }
 
 function timeAgo(date) {
@@ -37,6 +45,7 @@ export default function PostCard({ post, currentUser }) {
   const respostas = post.respostas || []
   const curtidas = post.curtidas || []
   const jaCurtiu = curtidas.includes(currentUser?.uid)
+  const categoria = normalizeCategory(post.categoria)
 
   const handleCurtir = async () => {
     if (!currentUser) return
@@ -64,7 +73,7 @@ export default function PostCard({ post, currentUser }) {
     try {
       const moderacao = await moderarTexto(texto)
       if (!moderacao.ok) {
-        setErroReply(`Resposta não permitida: ${moderacao.motivo}`)
+        setErroReply(`Resposta nao permitida: ${moderacao.motivo}`)
         setLoadingReply(false)
         return
       }
@@ -74,7 +83,7 @@ export default function PostCard({ post, currentUser }) {
           id: Date.now().toString(),
           texto,
           autorUid: currentUser?.uid || 'anon',
-          autorNome: currentUser?.displayName || 'Anônimo',
+          autorNome: currentUser?.displayName || 'Anonimo',
           criadaEm: new Date().toISOString(),
           curtidas: [],
         }),
@@ -90,42 +99,39 @@ export default function PostCard({ post, currentUser }) {
     }
   }
 
-  const catColor = CATEGORY_COLORS[post.categoria] || 'bg-stone-100 text-stone-600 border-stone-200'
+  const catColor = CATEGORY_COLORS[categoria] || 'bg-stone-100 text-stone-600 border-stone-200'
 
   return (
     <article className="card p-5 hover:shadow-card transition-shadow duration-300 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-3">
+      <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-100 to-sage-100 flex items-center justify-center text-stone-400 text-xs font-medium">
-            😶
+          <div className="w-8 h-8 rounded-lg bg-stone-100 border border-stone-200 flex items-center justify-center text-stone-500">
+            <Icon name="shield" className="w-4 h-4" />
           </div>
           <div>
-            <p className="text-sm font-medium text-stone-700">Anônimo</p>
+            <p className="text-sm font-medium text-stone-700">Anonimo</p>
             <p className="text-xs text-stone-400">{timeAgo(post.criadoEm)}</p>
           </div>
         </div>
-        {post.categoria && (
+        {categoria && (
           <span className={`badge border ${catColor}`}>
-            {post.categoria}
+            {categoria}
           </span>
         )}
       </div>
 
-      {/* Conteúdo */}
       <p className="text-stone-700 leading-relaxed text-sm mb-4 whitespace-pre-line">
         {post.conteudo}
       </p>
 
-      {/* Ações */}
-      <div className="flex items-center gap-4 pt-3 border-t border-stone-50">
+      <div className="flex items-center gap-4 pt-3 border-t border-stone-100">
         <button
           onClick={handleCurtir}
           className={`flex items-center gap-1.5 text-xs transition-colors ${
-            jaCurtiu ? 'text-brand-500 font-medium' : 'text-stone-400 hover:text-brand-400'
+            jaCurtiu ? 'text-brand-600 font-medium' : 'text-stone-400 hover:text-brand-500'
           }`}
         >
-          <span>{jaCurtiu ? '💙' : '🤍'}</span>
+          <Icon name="heart" className="w-4 h-4" filled={jaCurtiu} />
           <span>{curtidas.length}</span>
         </button>
 
@@ -133,24 +139,23 @@ export default function PostCard({ post, currentUser }) {
           onClick={() => setShowReply(!showReply)}
           className="flex items-center gap-1.5 text-xs text-stone-400 hover:text-stone-600 transition-colors"
         >
-          <span>💬</span>
+          <Icon name="message" className="w-4 h-4" />
           <span>{respostas.length} respostas</span>
         </button>
 
-        <button className="ml-auto text-xs text-stone-300 hover:text-red-400 transition-colors" title="Denunciar">
-          ⚑
+        <button className="ml-auto text-xs text-stone-300 hover:text-red-500 transition-colors" title="Denunciar" aria-label="Denunciar">
+          <Icon name="flag" className="w-4 h-4" />
         </button>
       </div>
 
-      {/* Respostas existentes */}
       {respostas.length > 0 && (
-        <div className="mt-4 space-y-3 pt-3 border-t border-stone-50">
+        <div className="mt-4 space-y-3 pt-3 border-t border-stone-100">
           {respostas.slice(0, 3).map((r) => (
             <div key={r.id} className="flex gap-2.5">
-              <div className="w-6 h-6 rounded-full bg-sage-50 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
-                💬
+              <div className="w-6 h-6 rounded-lg bg-sage-50 border border-sage-100 text-sage-700 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Icon name="message" className="w-3.5 h-3.5" />
               </div>
-              <div className="flex-1 bg-stone-50 rounded-xl px-3 py-2">
+              <div className="flex-1 bg-stone-50 rounded-lg px-3 py-2">
                 <p className="text-xs font-medium text-stone-500 mb-0.5">{r.autorNome}</p>
                 <p className="text-sm text-stone-700 leading-relaxed">{r.texto}</p>
               </div>
@@ -164,41 +169,44 @@ export default function PostCard({ post, currentUser }) {
         </div>
       )}
 
-      {/* Formulário de resposta */}
       {showReply && (
-        <div className="mt-4 pt-3 border-t border-stone-50 space-y-3 animate-slide-up">
+        <div className="mt-4 pt-3 border-t border-stone-100 space-y-3 animate-slide-up">
           <textarea
             value={resposta}
             onChange={(e) => { setResposta(e.target.value); setAiSuggestion('') }}
-            placeholder="Escreva sua resposta com empatia..."
+            placeholder="Escreva uma resposta com empatia..."
             className="input-field text-sm"
             rows={3}
           />
 
           {aiSuggestion && (
-            <div className="bg-brand-50 border border-brand-100 rounded-xl p-3">
-              <p className="text-xs text-brand-500 font-medium mb-1">✨ Sugestão mais empática:</p>
+            <div className="bg-brand-50 border border-brand-100 rounded-lg p-3">
+              <p className="text-xs text-brand-600 font-medium mb-1 flex items-center gap-1.5">
+                <Icon name="spark" className="w-3.5 h-3.5" />
+                Sugestao mais empatica
+              </p>
               <p className="text-sm text-stone-700">{aiSuggestion}</p>
               <button
                 onClick={() => { setResposta(aiSuggestion); setAiSuggestion('') }}
                 className="text-xs text-brand-600 hover:underline mt-1"
               >
-                Usar esta versão
+                Usar esta versao
               </button>
             </div>
           )}
 
           {erroReply && (
-            <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-xl">{erroReply}</p>
+            <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg">{erroReply}</p>
           )}
 
           <div className="flex items-center gap-2">
             <button
               onClick={handleReformular}
               disabled={!resposta.trim() || loadingAI}
-              className="btn-ghost text-xs gap-1.5 flex items-center"
+              className="btn-ghost text-xs gap-1.5"
             >
-              {loadingAI ? '...' : '✨ Tornar mais empático'}
+              <Icon name="spark" className="w-3.5 h-3.5" />
+              {loadingAI ? 'Ajustando...' : 'Tornar mais empatico'}
             </button>
             <button
               onClick={handleEnviarResposta}

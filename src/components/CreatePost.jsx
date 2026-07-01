@@ -1,10 +1,10 @@
-// src/components/CreatePost.jsx
 import { useState } from 'react'
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../services/firebase'
 import { moderarTexto } from '../services/ai'
+import Icon from './Icon'
 
-const CATEGORIAS = ['Ansiedade', 'Família', 'Relacionamentos', 'Trabalho', 'Solidão', 'Luto', 'Autoestima', 'Outros']
+const CATEGORIAS = ['Ansiedade', 'Familia', 'Relacionamentos', 'Trabalho', 'Solidao', 'Luto', 'Autoestima', 'Outros']
 
 export default function CreatePost({ user, onSuccess }) {
   const [form, setForm] = useState({ conteudo: '', categoria: '' })
@@ -21,7 +21,7 @@ export default function CreatePost({ user, onSuccess }) {
     try {
       const moderacao = await moderarTexto(form.conteudo)
       if (!moderacao.ok) {
-        setErro(`Conteúdo não permitido: ${moderacao.motivo}`)
+        setErro(`Conteudo nao permitido: ${moderacao.motivo}`)
         setLoading(false)
         return
       }
@@ -50,20 +50,27 @@ export default function CreatePost({ user, onSuccess }) {
 
   return (
     <div className="card p-6">
-      <h2 className="font-serif text-xl text-stone-900 mb-1">Novo desabafo</h2>
-      <p className="text-stone-500 text-sm mb-5">
-        Tudo que você escrever aqui será publicado de forma <strong>completamente anônima</strong>.
-      </p>
+      <div className="flex items-start gap-3 mb-5">
+        <div className="w-10 h-10 rounded-lg bg-brand-50 text-brand-700 border border-brand-100 flex items-center justify-center">
+          <Icon name="edit" className="w-5 h-5" />
+        </div>
+        <div>
+          <h2 className="font-serif text-xl text-stone-900 mb-1">Novo desabafo</h2>
+          <p className="text-stone-500 text-sm">
+            Tudo que voce escrever aqui sera publicado de forma anonima.
+          </p>
+        </div>
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="label">O que está pesando?</label>
+          <label className="label">O que esta pesando?</label>
           <textarea
             value={form.conteudo}
             onChange={(e) => { setForm({ ...form, conteudo: e.target.value }); setErro('') }}
-            placeholder="Conte o que você está sentindo, sem filtros. Ninguém vai te julgar aqui..."
+            placeholder="Conte o que voce esta sentindo. Aqui o foco e acolhimento, nao julgamento."
             className="input-field"
-            rows={5}
+            rows={6}
             required
             maxLength={2000}
           />
@@ -78,9 +85,9 @@ export default function CreatePost({ user, onSuccess }) {
                 key={cat}
                 type="button"
                 onClick={() => setForm({ ...form, categoria: form.categoria === cat ? '' : cat })}
-                className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all duration-200 ${
+                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-200 ${
                   form.categoria === cat
-                    ? 'bg-brand-500 text-white border-brand-500'
+                    ? 'bg-brand-600 text-white border-brand-600'
                     : 'bg-white border-stone-200 text-stone-600 hover:border-stone-300'
                 }`}
               >
@@ -91,25 +98,27 @@ export default function CreatePost({ user, onSuccess }) {
         </div>
 
         {erro && (
-          <div className="bg-red-50 border border-red-100 text-red-600 text-sm px-4 py-3 rounded-xl">
+          <div className="bg-red-50 border border-red-100 text-red-600 text-sm px-4 py-3 rounded-lg">
             {erro}
           </div>
         )}
 
         {sucesso && (
-          <div className="bg-sage-50 border border-sage-200 text-sage-700 text-sm px-4 py-3 rounded-xl flex items-center gap-2">
-            ✅ Desabafo publicado com sucesso!
+          <div className="bg-sage-50 border border-sage-200 text-sage-700 text-sm px-4 py-3 rounded-lg flex items-center gap-2">
+            <Icon name="check" className="w-4 h-4" />
+            Desabafo publicado com sucesso.
           </div>
         )}
 
-        <div className="flex items-center justify-between pt-2">
-          <p className="text-xs text-stone-400 flex items-center gap-1">
-            🔒 Publicado anonimamente
+        <div className="flex items-center justify-between gap-4 pt-2">
+          <p className="text-xs text-stone-400 flex items-center gap-1.5">
+            <Icon name="lock" className="w-3.5 h-3.5" />
+            Publicado anonimamente
           </p>
           <button
             type="submit"
             disabled={loading || !form.conteudo.trim()}
-            className="btn-primary flex items-center gap-2"
+            className="btn-primary gap-2"
           >
             {loading ? (
               <>

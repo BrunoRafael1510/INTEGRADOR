@@ -1,10 +1,10 @@
-// src/pages/Home.jsx
 import { useState, useEffect } from 'react'
 import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore'
 import { db } from '../services/firebase'
 import PostCard from '../components/PostCard'
+import Icon from '../components/Icon'
 
-const CATEGORIAS = ['Todas', 'Ansiedade', 'Família', 'Relacionamentos', 'Trabalho', 'Solidão', 'Luto', 'Autoestima', 'Outros']
+const CATEGORIAS = ['Todas', 'Ansiedade', 'Familia', 'Relacionamentos', 'Trabalho', 'Solidao', 'Luto', 'Autoestima', 'Outros']
 
 export default function Home({ user }) {
   const [posts, setPosts] = useState([])
@@ -26,19 +26,22 @@ export default function Home({ user }) {
   return (
     <div>
       <div className="mb-6">
+        <span className="inline-flex items-center gap-2 text-xs font-medium text-brand-700 bg-brand-50 border border-brand-100 px-3 py-1.5 rounded-full mb-3">
+          <Icon name="message" className="w-3.5 h-3.5" />
+          Comunidade anonima
+        </span>
         <h1 className="font-serif text-2xl text-stone-900 mb-1">Feed de desabafos</h1>
         <p className="text-stone-500 text-sm">Leia, apoie e responda com empatia.</p>
       </div>
 
-      {/* Filtro por categoria */}
       <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-none">
         {CATEGORIAS.map((cat) => (
           <button
             key={cat}
             onClick={() => setFiltro(cat)}
-            className={`flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all duration-200 ${
+            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-200 ${
               filtro === cat
-                ? 'bg-brand-500 text-white border-brand-500'
+                ? 'bg-brand-600 text-white border-brand-600'
                 : 'bg-white border-stone-200 text-stone-600 hover:border-stone-300'
             }`}
           >
@@ -47,13 +50,12 @@ export default function Home({ user }) {
         ))}
       </div>
 
-      {/* Lista */}
       {loading ? (
         <div className="space-y-4">
           {[1, 2, 3].map(i => (
             <div key={i} className="card p-5 animate-pulse">
               <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-full bg-stone-100" />
+                <div className="w-8 h-8 rounded-lg bg-stone-100" />
                 <div className="space-y-1">
                   <div className="h-3 w-16 bg-stone-100 rounded" />
                   <div className="h-2 w-10 bg-stone-100 rounded" />
@@ -68,9 +70,11 @@ export default function Home({ user }) {
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="card p-12 text-center">
-          <p className="text-4xl mb-3">🌿</p>
-          <p className="font-serif text-lg text-stone-700 mb-1">Nenhum desabafo ainda</p>
+        <div className="card p-10 text-center">
+          <div className="w-12 h-12 rounded-lg bg-stone-100 text-stone-500 mx-auto mb-4 flex items-center justify-center">
+            <Icon name="message" className="w-6 h-6" />
+          </div>
+          <p className="font-serif text-lg text-stone-800 mb-1">Nenhum desabafo ainda</p>
           <p className="text-stone-400 text-sm">Seja o primeiro a compartilhar algo.</p>
         </div>
       ) : (
