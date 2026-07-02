@@ -44,6 +44,10 @@
     @apply rounded-lg border border-white/60 bg-white/70 shadow-soft backdrop-blur-xl;
   }
 
+  .profile-form .input-field {
+    @apply bg-slate-50/95 border-slate-200/90 shadow-sm focus:bg-white;
+  }
+
   .btn-primary {
     @apply inline-flex items-center justify-center bg-gradient-to-br from-brand-600 to-brand-500 hover:from-brand-700 hover:to-violet-600 text-white font-semibold px-5 py-2.5 rounded-lg transition-all duration-200 shadow-soft hover:shadow-card hover:scale-[1.03] active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100;
   }

@@ -453,7 +453,7 @@ function ProfilePage({ user, profile, onNavigate }) {
       />
 
       <div className="grid gap-4 lg:grid-cols-[1fr_420px]">
-        <form className="card grid gap-4 p-5 sm:grid-cols-2">
+        <form className="card profile-form grid gap-4 p-5 sm:grid-cols-2">
           <div>
             <label className="label">Foto de perfil (URL)</label>
             <input className="input-field" value={draft.fotoUrl || ''} onChange={(e) => setField('fotoUrl', e.target.value)} placeholder="https://..." />
