@@ -98,7 +98,7 @@ export default function Dashboard({ user }) {
   )
 
   return (
-    <div className="min-h-screen bg-stone-50">
+    <div className="app-bg min-h-screen">
       <Navbar user={user} onMenuToggle={toggleSidebar} />
 
       <Sidebar

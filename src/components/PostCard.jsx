@@ -102,10 +102,10 @@ export default function PostCard({ post, currentUser }) {
   const catColor = CATEGORY_COLORS[categoria] || 'bg-stone-100 text-stone-600 border-stone-200'
 
   return (
-    <article className="card p-5 hover:shadow-card transition-shadow duration-300 animate-fade-in">
+    <article className="card p-5 animate-fade-in">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-stone-100 border border-stone-200 flex items-center justify-center text-stone-500">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-600/10 to-cyan-500/10 border border-white/70 flex items-center justify-center text-brand-700 shadow-sm">
             <Icon name="shield" className="w-4 h-4" />
           </div>
           <div>
@@ -152,10 +152,10 @@ export default function PostCard({ post, currentUser }) {
         <div className="mt-4 space-y-3 pt-3 border-t border-stone-100">
           {respostas.slice(0, 3).map((r) => (
             <div key={r.id} className="flex gap-2.5">
-              <div className="w-6 h-6 rounded-lg bg-sage-50 border border-sage-100 text-sage-700 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <div className="w-6 h-6 rounded-lg bg-cyan-50 border border-cyan-100 text-cyan-700 flex items-center justify-center flex-shrink-0 mt-0.5">
                 <Icon name="message" className="w-3.5 h-3.5" />
               </div>
-              <div className="flex-1 bg-stone-50 rounded-lg px-3 py-2">
+              <div className="flex-1 bg-white/65 border border-white/70 rounded-lg px-3 py-2 backdrop-blur-xl">
                 <p className="text-xs font-medium text-stone-500 mb-0.5">{r.autorNome}</p>
                 <p className="text-sm text-stone-700 leading-relaxed">{r.texto}</p>
               </div>
@@ -180,7 +180,7 @@ export default function PostCard({ post, currentUser }) {
           />
 
           {aiSuggestion && (
-            <div className="bg-brand-50 border border-brand-100 rounded-lg p-3">
+            <div className="bg-gradient-to-br from-brand-50 to-cyan-50 border border-white/70 rounded-lg p-3 shadow-sm">
               <p className="text-xs text-brand-600 font-medium mb-1 flex items-center gap-1.5">
                 <Icon name="spark" className="w-3.5 h-3.5" />
                 Sugestao mais empatica

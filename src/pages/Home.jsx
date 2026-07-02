@@ -41,8 +41,8 @@ export default function Home({ user }) {
             onClick={() => setFiltro(cat)}
             className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-200 ${
               filtro === cat
-                ? 'bg-brand-600 text-white border-brand-600'
-                : 'bg-white border-stone-200 text-stone-600 hover:border-stone-300'
+                ? 'bg-gradient-to-r from-brand-600 to-cyan-500 text-white border-transparent shadow-soft'
+                : 'bg-white/70 border-white/70 text-slate-600 hover:border-brand-200 hover:text-brand-700 backdrop-blur-xl'
             }`}
           >
             {cat}

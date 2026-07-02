@@ -16,29 +16,29 @@ export default function Navbar({ user, onMenuToggle }) {
     : '?'
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-40 h-14 bg-white/95 backdrop-blur border-b border-stone-200 flex items-center px-4 gap-4">
+    <header className="fixed top-0 left-0 right-0 z-40 h-14 bg-white/70 backdrop-blur-xl border-b border-white/50 shadow-sm flex items-center px-4 gap-4">
       <button
         onClick={onMenuToggle}
-        className="lg:hidden p-2 rounded-lg hover:bg-stone-100 text-stone-500 transition-colors"
+        className="lg:hidden p-2 rounded-lg hover:bg-brand-500/10 text-slate-500 transition-colors"
         aria-label="Abrir menu"
       >
         <Icon name="menu" className="w-5 h-5" />
       </button>
 
-      <span className="font-serif text-xl text-stone-900 flex-1">SafeTalk</span>
+      <span className="font-sans text-xl font-extrabold text-slate-950 flex-1">SafeTalk</span>
 
-      <span className="hidden md:flex items-center gap-1.5 text-xs text-stone-500 bg-stone-50 px-3 py-1.5 rounded-full border border-stone-200">
+      <span className="hidden md:flex items-center gap-1.5 text-xs text-slate-500 bg-white/65 px-3 py-1.5 rounded-full border border-white/60 shadow-sm">
         <Icon name="alert" className="w-3.5 h-3.5" />
         Nao substitui acompanhamento profissional
       </span>
 
       <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-lg bg-brand-50 border border-brand-100 text-brand-700 font-semibold text-xs flex items-center justify-center">
+        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-600 to-cyan-500 border border-white/60 text-white font-semibold text-xs flex items-center justify-center shadow-soft">
           {iniciais}
         </div>
         <button
           onClick={handleLogout}
-          className="text-stone-400 hover:text-stone-700 p-2 rounded-lg hover:bg-stone-100 transition-colors"
+          className="text-slate-400 hover:text-brand-700 p-2 rounded-lg hover:bg-brand-500/10 transition-colors"
           title="Sair"
           aria-label="Sair"
         >

@@ -31,7 +31,7 @@ function ProfessionalCard({ prof, onAgendar }) {
   return (
     <article className="card p-5 hover:shadow-card transition-shadow duration-300 animate-fade-in">
       <div className="flex items-start gap-4">
-        <div className="w-14 h-14 rounded-lg bg-stone-900 text-white flex items-center justify-center font-serif text-lg flex-shrink-0">
+        <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-brand-700 to-cyan-500 text-white flex items-center justify-center font-sans font-extrabold text-lg flex-shrink-0 shadow-soft">
           {iniciais}
         </div>
 
@@ -137,7 +137,7 @@ export default function Professionals() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-lg bg-stone-900 text-white p-6 md:p-7 overflow-hidden relative">
+      <section className="rounded-lg bg-gradient-to-br from-slate-950 via-brand-900 to-cyan-900 text-white p-6 md:p-7 overflow-hidden relative shadow-card">
         <div className="relative z-10 max-w-xl">
           <span className="inline-flex items-center gap-2 text-xs font-medium text-brand-100 bg-white/10 border border-white/10 px-3 py-1.5 rounded-full">
             <Icon name="shield" className="w-3.5 h-3.5" />
@@ -169,8 +169,8 @@ export default function Professionals() {
               onClick={() => setArea(item)}
               className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-200 ${
                 area === item
-                  ? 'bg-stone-900 text-white border-stone-900'
-                  : 'bg-white border-stone-200 text-stone-600 hover:border-stone-300'
+                  ? 'bg-gradient-to-r from-brand-600 to-cyan-500 text-white border-transparent shadow-soft'
+                  : 'bg-white/70 border-white/70 text-slate-600 hover:border-brand-200 hover:text-brand-700 backdrop-blur-xl'
               }`}
             >
               {item}
@@ -224,7 +224,7 @@ export default function Professionals() {
 
       {agendando && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm">
-          <div className="bg-white rounded-lg shadow-card p-6 w-full max-w-sm animate-slide-up">
+          <div className="glass-panel p-6 w-full max-w-sm animate-slide-up">
             <h3 className="font-serif text-xl text-stone-900 mb-1">Solicitar contato</h3>
             <p className="text-stone-500 text-sm mb-4">
               Voce esta enviando uma solicitacao para <strong>{agendando.nome}</strong>.

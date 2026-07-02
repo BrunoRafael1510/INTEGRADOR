@@ -125,10 +125,10 @@ export default function Register() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-50 flex items-center justify-center px-4 py-12">
+    <div className="app-bg min-h-screen flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-3xl animate-slide-up">
         <div className="text-center mb-8">
-          <Link to="/" className="font-serif text-3xl text-stone-900 hover:text-brand-600 transition-colors">
+          <Link to="/" className="font-sans text-3xl font-extrabold text-slate-950 hover:text-brand-600 transition-colors">
             SafeTalk
           </Link>
           <p className="text-stone-500 mt-2 text-sm">Crie sua conta e escolha como quer usar o espaco.</p>
@@ -136,7 +136,7 @@ export default function Register() {
 
         <div className="card overflow-hidden">
           <div className="grid md:grid-cols-[0.9fr_1.1fr]">
-            <aside className="bg-stone-900 text-white p-8 flex flex-col justify-between gap-8">
+            <aside className="bg-gradient-to-br from-slate-950 via-brand-900 to-cyan-900 text-white p-8 flex flex-col justify-between gap-8">
               <div>
                 <span className="inline-flex items-center gap-2 text-xs font-medium text-brand-100 bg-white/10 border border-white/10 px-3 py-1.5 rounded-full">
                   <Icon name="shield" className="w-3.5 h-3.5" />
@@ -158,7 +158,7 @@ export default function Register() {
             <section className="p-6 md:p-8">
               {etapa === 1 ? (
                 <>
-                  <h2 className="font-serif text-2xl text-stone-900 mb-2">Como voce quer entrar?</h2>
+                  <h2 className="font-sans text-2xl font-extrabold text-slate-950 mb-2">Como voce quer entrar?</h2>
                   <p className="text-stone-500 text-sm mb-6">Essa escolha muda os campos do cadastro e a experiencia dentro do app.</p>
 
                   <div className="grid gap-3 mb-6">
@@ -169,13 +169,13 @@ export default function Register() {
                         onClick={() => setTipo(t.value)}
                         className={`w-full text-left p-4 rounded-lg border transition-all duration-200 ${
                           tipo === t.value
-                            ? 'border-brand-500 bg-brand-50 shadow-sm'
-                            : 'border-stone-200 hover:border-stone-300 bg-white'
+                            ? 'border-brand-300 bg-gradient-to-br from-brand-50 to-cyan-50 shadow-soft'
+                            : 'border-white/70 hover:border-brand-200 bg-white/70'
                         }`}
                       >
                         <div className="flex items-start gap-3">
                           <span className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                            tipo === t.value ? 'bg-brand-600 text-white' : 'bg-stone-100 text-stone-500'
+                            tipo === t.value ? 'bg-gradient-to-br from-brand-600 to-cyan-500 text-white shadow-soft' : 'bg-white/80 text-slate-500'
                           }`}>
                             <Icon name={t.icon} className="w-5 h-5" />
                           </span>
@@ -201,7 +201,7 @@ export default function Register() {
                   >
                     Voltar
                   </button>
-                  <h2 className="font-serif text-2xl text-stone-900 mb-6">
+                  <h2 className="font-sans text-2xl font-extrabold text-slate-950 mb-6">
                     {tipo === 'profissional' ? 'Dados profissionais' : 'Seus dados'}
                   </h2>
 
@@ -231,8 +231,8 @@ export default function Register() {
                                 onClick={() => toggleArea(area)}
                                 className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-200 ${
                                   form.areas.includes(area)
-                                    ? 'bg-brand-600 text-white border-brand-600'
-                                    : 'bg-white text-stone-600 border-stone-200 hover:border-brand-300'
+                                    ? 'bg-gradient-to-r from-brand-600 to-cyan-500 text-white border-transparent shadow-soft'
+                                    : 'bg-white/70 text-slate-600 border-white/70 hover:border-brand-300 backdrop-blur-xl'
                                 }`}
                               >
                                 {area}

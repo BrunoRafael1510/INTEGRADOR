@@ -33,10 +33,10 @@ export default function Landing({ user }) {
   const navigate = useNavigate()
 
   return (
-    <div className="min-h-screen bg-stone-50 font-sans">
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/85 backdrop-blur-md border-b border-stone-200">
+    <div className="app-bg min-h-screen font-sans">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/70 backdrop-blur-xl border-b border-white/50 shadow-sm">
         <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
-          <span className="font-serif text-2xl text-stone-900">SafeTalk</span>
+          <span className="font-sans text-2xl font-extrabold text-slate-950">SafeTalk</span>
           <div className="flex items-center gap-3">
             {user ? (
               <button onClick={() => navigate('/dashboard')} className="btn-primary">
@@ -64,7 +64,7 @@ export default function Landing({ user }) {
               Um espaco seguro para se expressar
             </span>
 
-            <h1 className="text-5xl md:text-6xl text-stone-900 leading-tight mb-6">
+            <h1 className="text-5xl md:text-6xl font-extrabold text-slate-950 leading-tight mb-6">
               SafeTalk
             </h1>
 
@@ -93,8 +93,8 @@ export default function Landing({ user }) {
             </p>
           </div>
 
-          <div className="card p-5 bg-white">
-            <div className="rounded-lg bg-stone-900 text-white p-5 mb-4">
+          <div className="card p-5">
+            <div className="rounded-lg bg-gradient-to-br from-slate-950 via-brand-900 to-cyan-900 text-white p-5 mb-4 shadow-soft">
               <p className="text-xs text-stone-300 mb-3">Feed anonimo</p>
               <p className="text-sm leading-relaxed text-stone-100">
                 "Hoje foi dificil, mas escrever aqui me ajudou a organizar o que eu estava sentindo."
@@ -114,9 +114,9 @@ export default function Landing({ user }) {
         </div>
       </section>
 
-      <section className="py-16 px-6 bg-white border-y border-stone-200">
+      <section className="py-16 px-6 bg-white/45 border-y border-white/60 backdrop-blur-xl">
         <div className="max-w-5xl mx-auto">
-          <h2 className="font-serif text-3xl text-stone-900 text-center mb-12">
+          <h2 className="font-sans text-3xl font-extrabold text-slate-950 text-center mb-12">
             Feito para quem precisa ser ouvido
           </h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -135,7 +135,7 @@ export default function Landing({ user }) {
 
       <section className="py-16 px-6">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="font-serif text-3xl text-stone-900 mb-4">
+          <h2 className="font-sans text-3xl font-extrabold text-slate-950 mb-4">
             Explore por categoria
           </h2>
           <p className="text-stone-500 mb-10">
@@ -146,7 +146,7 @@ export default function Landing({ user }) {
               <button
                 key={cat}
                 onClick={() => navigate('/cadastro')}
-                className="px-4 py-2 bg-white border border-stone-200 hover:border-brand-300 hover:text-brand-600 rounded-full text-sm text-stone-600 transition-all duration-200"
+                className="px-4 py-2 bg-white/70 border border-white/70 hover:border-brand-300 hover:text-brand-600 rounded-full text-sm text-slate-600 shadow-sm backdrop-blur-xl transition-all duration-200 hover:-translate-y-0.5"
               >
                 {cat}
               </button>
@@ -155,9 +155,9 @@ export default function Landing({ user }) {
         </div>
       </section>
 
-      <section className="py-16 px-6 bg-stone-900">
+      <section className="py-16 px-6 bg-gradient-to-br from-slate-950 via-brand-900 to-cyan-900">
         <div className="max-w-2xl mx-auto text-center">
-          <h2 className="font-serif text-4xl text-white mb-4">
+          <h2 className="font-sans text-4xl font-extrabold text-white mb-4">
             Comece do jeito que fizer sentido hoje.
           </h2>
           <p className="text-stone-300 mb-8 text-lg">

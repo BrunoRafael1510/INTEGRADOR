@@ -7,21 +7,33 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        serif: ['"DM Serif Display"', 'serif'],
-        sans: ['"DM Sans"', 'sans-serif'],
+        serif: ['"Plus Jakarta Sans"', 'Inter', 'sans-serif'],
+        sans: ['Inter', '"Plus Jakarta Sans"', 'sans-serif'],
       },
       colors: {
         brand: {
-          50:  '#eef5ff',
-          100: '#d9e8ff',
-          200: '#bcd4ff',
-          300: '#8eb8ff',
-          400: '#5990f8',
-          500: '#3a6ef0',
-          600: '#2450e4',
-          700: '#1d3dcf',
-          800: '#1e33a8',
-          900: '#1e2f84',
+          50:  '#eef2ff',
+          100: '#e0e7ff',
+          200: '#c7d2fe',
+          300: '#a5b4fc',
+          400: '#818cf8',
+          500: '#6366f1',
+          600: '#4f46e5',
+          700: '#4338ca',
+          800: '#3730a3',
+          900: '#312e81',
+        },
+        cyan: {
+          50:  '#ecfeff',
+          100: '#cffafe',
+          200: '#a5f3fc',
+          300: '#67e8f9',
+          400: '#22d3ee',
+          500: '#06b6d4',
+          600: '#0891b2',
+          700: '#0e7490',
+          800: '#155e75',
+          900: '#164e63',
         },
         sage: {
           50:  '#f2f7f4',
@@ -54,9 +66,9 @@ export default {
         '4xl': '2rem',
       },
       boxShadow: {
-        'soft': '0 2px 20px rgba(0,0,0,0.06)',
-        'card': '0 4px 32px rgba(0,0,0,0.08)',
-        'glow': '0 0 40px rgba(58,110,240,0.15)',
+        'soft': '0 15px 40px rgba(30,64,175,0.08)',
+        'card': '0 24px 70px rgba(79,70,229,0.16)',
+        'glow': '0 0 45px rgba(79,70,229,0.18)',
       },
       animation: {
         'fade-in': 'fadeIn 0.4s ease-out',
