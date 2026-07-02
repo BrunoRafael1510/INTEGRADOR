@@ -85,10 +85,10 @@ export default function CreatePost({ user, onSuccess }) {
                 key={cat}
                 type="button"
                 onClick={() => setForm({ ...form, categoria: form.categoria === cat ? '' : cat })}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-200 ${
+                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors duration-150 ${
                   form.categoria === cat
-                    ? 'bg-gradient-to-r from-brand-600 to-cyan-500 text-white border-transparent shadow-soft'
-                    : 'bg-white/70 border-white/70 text-slate-600 hover:border-brand-200 hover:text-brand-700 backdrop-blur-xl'
+                    ? 'bg-brand-600 text-stone-50 border-brand-600'
+                    : 'bg-stone-50/80 border-stone-200 text-stone-600 hover:border-brand-200 hover:text-brand-700'
                 }`}
               >
                 {cat}

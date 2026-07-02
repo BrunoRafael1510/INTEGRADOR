@@ -29,9 +29,9 @@ function ProfessionalCard({ prof, onAgendar }) {
   const areas = prof.areas?.length ? prof.areas : [prof.especialidade].filter(Boolean)
 
   return (
-    <article className="card p-5 hover:shadow-card transition-shadow duration-300 animate-fade-in">
+    <article className="card p-5 transition-colors duration-150 animate-fade-in">
       <div className="flex items-start gap-4">
-        <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-brand-700 to-cyan-500 text-white flex items-center justify-center font-sans font-extrabold text-lg flex-shrink-0 shadow-soft">
+        <div className="w-14 h-14 rounded-lg bg-brand-600 text-stone-50 flex items-center justify-center font-sans font-semibold text-lg flex-shrink-0">
           {iniciais}
         </div>
 
@@ -137,9 +137,9 @@ export default function Professionals() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-lg bg-gradient-to-br from-slate-950 via-brand-900 to-cyan-900 text-white p-6 md:p-7 overflow-hidden relative shadow-card">
+      <section className="rounded-lg bg-brand-800 text-stone-50 p-6 md:p-7 overflow-hidden relative">
         <div className="relative z-10 max-w-xl">
-          <span className="inline-flex items-center gap-2 text-xs font-medium text-brand-100 bg-white/10 border border-white/10 px-3 py-1.5 rounded-full">
+          <span className="inline-flex items-center gap-2 text-xs font-medium text-brand-100 bg-stone-50/10 border border-stone-50/20 px-3 py-1.5 rounded-full">
             <Icon name="shield" className="w-3.5 h-3.5" />
             Diretório verificado
           </span>
@@ -148,7 +148,6 @@ export default function Professionals() {
             Busque por area, abordagem ou disponibilidade. A ideia aqui e facilitar o primeiro contato, sem transformar o apoio em algo frio.
           </p>
         </div>
-        <div className="absolute -right-10 -bottom-14 w-48 h-48 rounded-full border border-white/10" />
       </section>
 
       <section className="card p-4 space-y-4">
@@ -167,10 +166,10 @@ export default function Professionals() {
             <button
               key={item}
               onClick={() => setArea(item)}
-              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-200 ${
+              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors duration-150 ${
                 area === item
-                  ? 'bg-gradient-to-r from-brand-600 to-cyan-500 text-white border-transparent shadow-soft'
-                  : 'bg-white/70 border-white/70 text-slate-600 hover:border-brand-200 hover:text-brand-700 backdrop-blur-xl'
+                  ? 'bg-brand-600 text-stone-50 border-brand-600'
+                  : 'bg-stone-50/80 border-stone-200 text-stone-600 hover:border-brand-200 hover:text-brand-700'
               }`}
             >
               {item}

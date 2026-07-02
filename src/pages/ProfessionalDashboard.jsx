@@ -126,7 +126,7 @@ function ProfessionalHome({ user }) {
 
           <div className="space-y-3">
             {consultasRecentes.map((consulta, index) => (
-              <div key={index} className="border border-stone-100 rounded-xl p-4">
+              <div key={index} className="border border-stone-200 rounded-lg p-4">
                 <div className="flex items-start justify-between gap-3 mb-1">
                   <p className="font-medium text-stone-800">{consulta.paciente}</p>
                   <StatusBadge>{consulta.status}</StatusBadge>
@@ -142,17 +142,17 @@ function ProfessionalHome({ user }) {
           <h3 className="font-serif text-lg text-stone-900 mb-4">Atividades recentes</h3>
 
           <div className="space-y-3">
-            <div className="border border-stone-100 rounded-xl p-4">
+            <div className="border border-stone-200 rounded-lg p-4">
               <p className="text-sm text-stone-700">Nova solicitação de atendimento recebida.</p>
               <p className="text-xs text-stone-400">Hoje, 09:20</p>
             </div>
 
-            <div className="border border-stone-100 rounded-xl p-4">
+            <div className="border border-stone-200 rounded-lg p-4">
               <p className="text-sm text-stone-700">Paciente enviou mensagem no chat.</p>
               <p className="text-xs text-stone-400">Ontem, 18:45</p>
             </div>
 
-            <div className="border border-stone-100 rounded-xl p-4">
+            <div className="border border-stone-200 rounded-lg p-4">
               <p className="text-sm text-stone-700">Consulta marcada para sexta-feira.</p>
               <p className="text-xs text-stone-400">Ontem, 11:10</p>
             </div>
@@ -185,7 +185,7 @@ function ConsultationsPage() {
 
         <div className="space-y-3">
           {consultasRecentes.map((consulta, index) => (
-            <div key={index} className="border border-stone-100 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div key={index} className="border border-stone-200 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
                 <p className="font-medium text-stone-800">{consulta.paciente}</p>
                 <p className="text-sm text-stone-500">{consulta.tipo}</p>
@@ -256,10 +256,10 @@ function SchedulePage() {
           {horarios.map((horario, index) => (
             <button
               key={horario}
-              className={`rounded-xl border px-4 py-3 text-sm transition ${
+              className={`rounded-lg border px-4 py-3 text-sm transition-colors duration-150 ${
                 index === 5 || index === 7
                   ? 'bg-brand-50 border-brand-100 text-brand-700'
-                  : 'bg-white border-stone-100 text-stone-600 hover:border-brand-100'
+                  : 'bg-stone-50 border-stone-200 text-stone-600 hover:border-brand-100'
               }`}
             >
               {horario}
@@ -272,17 +272,17 @@ function SchedulePage() {
         <h2 className="font-serif text-xl text-stone-900 mb-4">Agenda da semana</h2>
 
         <div className="space-y-3">
-          <div className="border border-stone-100 rounded-xl p-4">
+          <div className="border border-stone-200 rounded-lg p-4">
             <p className="font-medium text-stone-800">Segunda-feira</p>
             <p className="text-sm text-stone-500">2 consultas marcadas</p>
           </div>
 
-          <div className="border border-stone-100 rounded-xl p-4">
+          <div className="border border-stone-200 rounded-lg p-4">
             <p className="font-medium text-stone-800">Terça-feira</p>
             <p className="text-sm text-stone-500">1 consulta marcada</p>
           </div>
 
-          <div className="border border-stone-100 rounded-xl p-4">
+          <div className="border border-stone-200 rounded-lg p-4">
             <p className="font-medium text-stone-800">Quarta-feira</p>
             <p className="text-sm text-stone-500">Horários livres</p>
           </div>
@@ -316,7 +316,7 @@ function PatientsPage() {
 
         <div className="space-y-3">
           {pacientes.map((paciente, index) => (
-            <div key={index} className="border border-stone-100 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div key={index} className="border border-stone-200 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
                 <p className="font-medium text-stone-800">{paciente.nome}</p>
                 <p className="text-sm text-stone-500">Última consulta: {paciente.ultimaConsulta}</p>
@@ -350,7 +350,7 @@ function ChatHistoryPage() {
             {mensagens.map((mensagem, index) => (
               <button
                 key={index}
-                className="w-full text-left border border-stone-100 rounded-xl p-3 hover:border-brand-100 transition"
+                className="w-full text-left border border-stone-200 rounded-lg p-3 hover:border-brand-100 transition-colors duration-150"
               >
                 <p className="font-medium text-sm text-stone-800">{mensagem.paciente}</p>
                 <p className="text-xs text-stone-400">{mensagem.data}</p>
@@ -365,7 +365,7 @@ function ChatHistoryPage() {
 
           <div className="space-y-3 mb-5">
             {mensagens.map((mensagem, index) => (
-              <div key={index} className="border border-stone-100 rounded-xl p-4">
+              <div key={index} className="border border-stone-200 rounded-lg p-4">
                 <div className="flex items-center justify-between gap-3 mb-2">
                   <p className="font-medium text-stone-800">{mensagem.paciente}</p>
                   <p className="text-xs text-stone-400">{mensagem.data}</p>
@@ -428,7 +428,7 @@ function RequestsPage() {
                   Aceitar
                 </button>
 
-                <button className="px-4 py-2 rounded-xl border border-stone-200 text-sm text-stone-600 hover:bg-stone-50">
+                <button className="px-4 py-2 rounded-lg border border-stone-200 text-sm text-stone-600 hover:bg-stone-100 transition-colors duration-150">
                   Recusar
                 </button>
               </div>
@@ -600,8 +600,8 @@ export default function ProfessionalDashboard({ user }) {
       )}
 
       <aside className={`
-        fixed top-14 left-0 bottom-0 z-40 w-64 bg-white border-r border-stone-100
-        flex flex-col pt-4 pb-6 px-3 transition-transform duration-300 lg:translate-x-0
+        fixed top-14 left-0 bottom-0 z-40 w-64 bg-stone-50 border-r border-stone-200
+        flex flex-col pt-4 pb-6 px-3 transition-transform duration-150 lg:translate-x-0
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <nav className="flex-1 space-y-1 overflow-y-auto pr-1">
@@ -620,7 +620,7 @@ export default function ProfessionalDashboard({ user }) {
           ))}
         </nav>
 
-        <div className="bg-brand-50 border border-brand-100 rounded-xl p-3 mt-4">
+        <div className="bg-brand-50 border border-brand-100 rounded-lg p-3 mt-4">
           <p className="text-xs text-brand-700 leading-relaxed">
             <strong>Área profissional:</strong> gerencie consultas, agenda, pacientes e histórico de atendimento.
           </p>

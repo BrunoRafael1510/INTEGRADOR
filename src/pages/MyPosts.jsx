@@ -87,7 +87,7 @@ export default function MyPosts({ user }) {
               <button
                 onClick={() => handleDeletar(post.id)}
                 disabled={deletando === post.id}
-                className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity text-xs text-stone-400 hover:text-red-500 bg-white px-2 py-1 rounded-lg border border-stone-200 shadow-sm"
+                className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-150 text-xs text-stone-400 hover:text-red-500 bg-stone-50 px-2 py-1 rounded-lg border border-stone-200"
               >
                 {deletando === post.id ? '...' : 'Remover'}
               </button>

@@ -63,7 +63,7 @@ function profileCompletion(profile) {
 function EmptyState({ icon = 'inbox', title, description, action }) {
   return (
     <div className="glass-panel border-dashed p-8 text-center">
-      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-brand-600/10 to-cyan-500/10 text-brand-700">
+      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-brand-50 text-brand-700 ring-1 ring-brand-100">
         <Icon name={icon} className="h-6 w-6" />
       </div>
       <p className="font-sans text-lg font-semibold text-slate-900">{title}</p>
@@ -78,12 +78,12 @@ function SectionHeader({ eyebrow, title, description, actions }) {
     <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
       <div>
         {eyebrow && (
-          <span className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-3 py-1.5 text-xs font-semibold text-brand-700 shadow-sm backdrop-blur-xl">
+          <span className="mb-3 inline-flex items-center gap-2 rounded-full border border-brand-100 bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-700">
             {eyebrow}
           </span>
         )}
-        <h1 className="font-sans text-2xl font-extrabold tracking-normal text-slate-950 md:text-3xl">{title}</h1>
-        {description && <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500">{description}</p>}
+        <h1 className="font-sans text-2xl font-bold tracking-normal text-stone-900 md:text-3xl">{title}</h1>
+        {description && <p className="mt-2 max-w-2xl text-sm leading-relaxed text-stone-500">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
     </div>
@@ -98,10 +98,10 @@ const STAT_TONES = {
     change: 'text-blue-600 bg-blue-50 border-blue-100',
   },
   calendar: {
-    icon: 'border-violet-100 bg-violet-50 text-violet-600',
-    glow: 'from-violet-500/18',
-    bars: 'from-violet-500 to-brand-600',
-    change: 'text-violet-600 bg-violet-50 border-violet-100',
+    icon: 'border-brand-100 bg-brand-50 text-brand-700',
+    glow: 'from-brand-500/0',
+    bars: 'from-brand-500 to-brand-600',
+    change: 'text-brand-700 bg-brand-50 border-brand-100',
   },
   star: {
     icon: 'border-amber-100 bg-amber-50 text-amber-500',
@@ -110,16 +110,16 @@ const STAT_TONES = {
     change: 'text-amber-700 bg-amber-50 border-amber-100',
   },
   message: {
-    icon: 'border-cyan-100 bg-cyan-50 text-cyan-600',
-    glow: 'from-cyan-500/18',
-    bars: 'from-cyan-500 to-brand-500',
+    icon: 'border-cyan-100 bg-cyan-50 text-cyan-700',
+    glow: 'from-cyan-500/0',
+    bars: 'from-cyan-400 to-cyan-500',
     change: 'text-cyan-700 bg-cyan-50 border-cyan-100',
   },
   inbox: {
-    icon: 'border-violet-100 bg-violet-50 text-violet-600',
-    glow: 'from-violet-500/18',
-    bars: 'from-violet-500 to-cyan-500',
-    change: 'text-violet-600 bg-violet-50 border-violet-100',
+    icon: 'border-brand-100 bg-brand-50 text-brand-700',
+    glow: 'from-brand-500/0',
+    bars: 'from-brand-500 to-cyan-400',
+    change: 'text-brand-700 bg-brand-50 border-brand-100',
   },
   heart: {
     icon: 'border-rose-100 bg-rose-50 text-rose-500',
@@ -136,7 +136,7 @@ function MiniSparkline({ tone }) {
       {heights.map((height, index) => (
         <span
           key={height + index}
-          className={`w-1.5 rounded-full bg-gradient-to-t ${tone.bars}`}
+          className="w-1.5 rounded-full bg-brand-500"
           style={{ height, opacity: index % 2 ? 0.72 : 1 }}
         />
       ))}
@@ -147,14 +147,13 @@ function MiniSparkline({ tone }) {
 function StatCard({ label, value, icon, hint }) {
   const tone = STAT_TONES[icon] || {
     icon: 'border-brand-100 bg-brand-50 text-brand-700',
-    glow: 'from-brand-500/18',
-    bars: 'from-brand-600 to-cyan-500',
+    glow: 'from-brand-500/0',
+    bars: 'from-brand-500 to-brand-600',
     change: 'text-brand-700 bg-brand-50 border-brand-100',
   }
 
   return (
-    <div className={`relative overflow-hidden rounded-lg border border-white/60 bg-white/80 p-4 shadow-soft backdrop-blur-xl transition-all duration-200 hover:-translate-y-1 hover:shadow-card`}>
-      <div className={`pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-gradient-to-br ${tone.glow} to-transparent blur-2xl`} />
+    <div className="relative overflow-hidden rounded-lg border border-stone-200 bg-stone-50/90 p-4 shadow-soft transition-colors duration-150">
       <div className="relative mb-4 flex items-center justify-between gap-3">
         <span className={`rounded-lg border p-2 shadow-sm ${tone.icon}`}>
           <Icon name={icon} className="h-4 w-4" />
@@ -163,7 +162,7 @@ function StatCard({ label, value, icon, hint }) {
       </div>
       <div className="relative flex items-end justify-between gap-3">
         <div>
-          <p className="text-3xl font-extrabold tracking-normal text-slate-950">{value}</p>
+          <p className="text-3xl font-bold tracking-normal text-stone-900">{value}</p>
           <p className="mt-1 text-sm font-medium text-slate-500">{label}</p>
         </div>
         <MiniSparkline tone={tone} />
@@ -175,8 +174,8 @@ function StatCard({ label, value, icon, hint }) {
 
 function ProgressBar({ value }) {
   return (
-    <div className="h-2 overflow-hidden rounded-full bg-white/80 shadow-inner">
-      <div className="h-full rounded-full bg-gradient-to-r from-brand-600 via-violet-600 to-cyan-500 transition-all duration-300" style={{ width: `${value}%` }} />
+    <div className="h-2 overflow-hidden rounded-full bg-stone-200/70">
+      <div className="h-full rounded-full bg-brand-600 transition-all duration-150" style={{ width: `${value}%` }} />
     </div>
   )
 }
@@ -193,8 +192,8 @@ function SmallBarChart({ data, emptyText }) {
             <span className="text-stone-500">{item.label}</span>
             <span className="font-medium text-stone-800">{item.value}</span>
           </div>
-          <div className="h-2 overflow-hidden rounded-full bg-white/80 shadow-inner">
-            <div className="h-full rounded-full bg-gradient-to-r from-brand-600 via-violet-600 to-cyan-500" style={{ width: `${(item.value / max) * 100}%` }} />
+          <div className="h-2 overflow-hidden rounded-full bg-stone-200/70">
+            <div className="h-full rounded-full bg-brand-600" style={{ width: `${(item.value / max) * 100}%` }} />
           </div>
         </div>
       ))}
@@ -361,9 +360,9 @@ function ProfilePreview({ profile }) {
   const areas = Array.isArray(profile?.areas) ? profile.areas : []
 
   return (
-    <div className="mt-5 overflow-hidden rounded-lg border border-white/60 bg-gradient-to-br from-white/90 via-brand-50/80 to-cyan-50/70 p-4 shadow-soft backdrop-blur-xl">
+    <div className="mt-5 overflow-hidden rounded-lg border border-stone-200 bg-stone-50/90 p-4 shadow-soft">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-        <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-brand-700 to-cyan-500 text-lg font-extrabold text-white shadow-card ring-4 ring-white/70">
+        <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-brand-600 text-lg font-semibold text-stone-50 ring-4 ring-stone-100">
           {profile?.fotoUrl ? <img src={profile.fotoUrl} alt="" className="h-full w-full object-cover" /> : displayName.split(' ').map((item) => item[0]).slice(0, 2).join('').toUpperCase()}
         </div>
         <div className="min-w-0 flex-1">
@@ -382,15 +381,15 @@ function ProfilePreview({ profile }) {
           </div>
 
           <div className="mt-4 grid gap-2 sm:grid-cols-3">
-            <div className="rounded-lg border border-white/70 bg-white/70 p-3 shadow-sm backdrop-blur-xl">
+            <div className="rounded-lg border border-stone-200 bg-stone-100/50 p-3">
               <p className="text-xs text-slate-400">Modalidade</p>
               <p className="text-sm font-semibold text-slate-800">{profile?.atendimento || 'Nao informada'}</p>
             </div>
-            <div className="rounded-lg border border-white/70 bg-white/70 p-3 shadow-sm backdrop-blur-xl">
+            <div className="rounded-lg border border-stone-200 bg-stone-100/50 p-3">
               <p className="text-xs text-slate-400">Valor</p>
               <p className="text-sm font-semibold text-slate-800">{profile?.valorConsulta || 'Nao informado'}</p>
             </div>
-            <div className="rounded-lg border border-white/70 bg-white/70 p-3 shadow-sm backdrop-blur-xl">
+            <div className="rounded-lg border border-stone-200 bg-stone-100/50 p-3">
               <p className="text-xs text-slate-400">Disponibilidade</p>
               <p className="text-sm font-semibold text-slate-800">{profile?.disponibilidade || 'Nao informada'}</p>
             </div>
@@ -399,7 +398,7 @@ function ProfilePreview({ profile }) {
           {profile?.descricao && <p className="mt-4 text-sm leading-relaxed text-slate-600">{profile.descricao}</p>}
           {areas.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-2">
-              {areas.map((area) => <span key={area} className="badge border border-white/70 bg-white/70 text-slate-600 shadow-sm">{area}</span>)}
+              {areas.map((area) => <span key={area} className="badge border border-stone-200 bg-stone-100/70 text-stone-600">{area}</span>)}
             </div>
           )}
         </div>
@@ -598,7 +597,7 @@ function RequestsPage({ requests }) {
 
       {selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-          <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-card">
+          <div className="w-full max-w-lg rounded-lg bg-stone-50 p-6 shadow-card">
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
                 <h3 className="font-serif text-xl text-stone-950">Detalhes da solicitacao</h3>
@@ -709,7 +708,7 @@ function AnswerPage({ posts, user }) {
       <SectionHeader title="Responder Desabafos" description="Mostra apenas desabafos reais sem respostas registradas." />
       <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
         {CATEGORIES.map((item) => (
-          <button key={item} onClick={() => setCategory(item)} className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-all duration-200 ${category === item ? 'border-transparent bg-gradient-to-r from-brand-600 to-cyan-500 text-white shadow-soft' : 'border-white/70 bg-white/70 text-slate-600 hover:border-brand-200 hover:text-brand-700 backdrop-blur-xl'}`}>
+          <button key={item} onClick={() => setCategory(item)} className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-150 ${category === item ? 'border-brand-600 bg-brand-600 text-stone-50' : 'border-stone-200 bg-stone-50/80 text-stone-600 hover:border-brand-200 hover:text-brand-700'}`}>
             {item}
           </button>
         ))}
@@ -950,7 +949,7 @@ export default function ProfessionalHome({ user, profile, activePage = 'home', o
     return (
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {Array.from({ length: 8 }, (_, index) => (
-          <div key={index} className="h-32 animate-pulse rounded-lg border border-white/60 bg-white/70 p-4 shadow-soft backdrop-blur-xl">
+          <div key={index} className="h-32 animate-pulse rounded-lg border border-stone-200 bg-stone-50/80 p-4 shadow-soft">
             <div className="mb-5 h-8 w-8 rounded-lg bg-brand-100/70" />
             <div className="mb-3 h-5 w-20 rounded bg-slate-100/80" />
             <div className="h-3 w-28 rounded bg-slate-100/80" />

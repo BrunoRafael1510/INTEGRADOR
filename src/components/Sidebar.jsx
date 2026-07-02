@@ -44,8 +44,8 @@ export default function Sidebar({ activePage, onNavigate, isOpen, onClose, profi
       )}
 
       <aside className={`
-        fixed top-14 left-0 bottom-0 z-40 ${isProfessional ? 'w-64' : 'w-56'} bg-white/65 backdrop-blur-xl border-r border-white/50 shadow-soft
-        flex flex-col pt-4 pb-6 px-3 transition-transform duration-300 lg:translate-x-0
+        fixed top-14 left-0 bottom-0 z-40 ${isProfessional ? 'w-64' : 'w-56'} bg-stone-50/90 backdrop-blur-md border-r border-stone-200
+        flex flex-col pt-4 pb-6 px-3 transition-transform duration-150 lg:translate-x-0
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <nav className="flex-1 space-y-1 overflow-y-auto pr-1">
@@ -62,20 +62,20 @@ export default function Sidebar({ activePage, onNavigate, isOpen, onClose, profi
         </nav>
 
         {isProfessional ? (
-          <div className="rounded-lg border border-white/60 bg-gradient-to-br from-brand-600/10 via-white/70 to-cyan-500/10 p-3 shadow-soft backdrop-blur-xl">
+          <div className="rounded-lg border border-stone-200 bg-stone-100/60 p-3">
             <div className="mb-2 flex items-center justify-between gap-3">
               <p className="text-xs font-semibold text-brand-800">Perfil {completion}%</p>
               <Icon name="award" className="w-4 h-4 text-brand-600" />
             </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-white/80">
-              <div className="h-full rounded-full bg-gradient-to-r from-brand-600 via-violet-600 to-cyan-500 transition-all" style={{ width: `${completion}%` }} />
+            <div className="h-1.5 overflow-hidden rounded-full bg-stone-200/70">
+              <div className="h-full rounded-full bg-brand-600 transition-all duration-150" style={{ width: `${completion}%` }} />
             </div>
             <p className="mt-2 text-xs leading-relaxed text-brand-700">
               Dados completos aumentam a confianca de pacientes no diretorio.
             </p>
           </div>
         ) : (
-          <div className="rounded-lg border border-amber-100/70 bg-amber-50/80 p-3 shadow-sm backdrop-blur-xl">
+          <div className="rounded-lg border border-amber-100/70 bg-amber-50/75 p-3">
             <p className="text-xs leading-relaxed text-amber-800">
               <strong>Em crise?</strong> Ligue para o <strong>CVV: 188</strong>, atendimento 24h.
             </p>

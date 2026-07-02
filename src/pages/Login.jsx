@@ -40,7 +40,7 @@ export default function Login() {
     <div className="app-bg min-h-screen flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm animate-slide-up">
         <div className="text-center mb-8">
-          <Link to="/" className="font-sans text-3xl font-extrabold text-slate-950 hover:text-brand-600 transition-colors">
+          <Link to="/" className="font-sans text-3xl font-bold text-stone-900 hover:text-brand-700 transition-colors duration-150">
             SafeTalk
           </Link>
           <p className="text-slate-500 mt-2 text-sm">Entre para continuar seu espaco de apoio.</p>
@@ -50,7 +50,7 @@ export default function Login() {
           <div className="w-10 h-10 rounded-lg bg-brand-50 text-brand-700 border border-brand-100 flex items-center justify-center mb-5">
             <Icon name="lock" className="w-5 h-5" />
           </div>
-          <h1 className="font-sans text-2xl font-extrabold text-slate-950 mb-6">Entrar</h1>
+          <h1 className="font-sans text-2xl font-bold text-stone-900 mb-6">Entrar</h1>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
