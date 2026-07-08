@@ -40,7 +40,7 @@ function PageFallback() {
   )
 }
 
-export default function Dashboard({ user }) {
+export default function Dashboard({ user, theme = 'light', onThemeToggle }) {
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -99,7 +99,7 @@ export default function Dashboard({ user }) {
 
   return (
     <div className="app-bg min-h-screen">
-      <Navbar user={user} onMenuToggle={toggleSidebar} />
+      <Navbar user={user} onMenuToggle={toggleSidebar} theme={theme} onThemeToggle={onThemeToggle} />
 
       <Sidebar
         activePage={activePage}
@@ -132,7 +132,7 @@ export default function Dashboard({ user }) {
               />
               <Route path="feed-comunidade" element={<Home user={user} />} />
               <Route path="criar" element={<CreatePost user={user} onSuccess={() => handleNavigate('home')} />} />
-              <Route path="profissionais" element={<Professionals user={user} />} />
+              <Route path="profissionais" element={<Professionals user={user} viewerProfile={profile} />} />
               <Route path="meus-desabafos" element={<MyPosts user={user} />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>

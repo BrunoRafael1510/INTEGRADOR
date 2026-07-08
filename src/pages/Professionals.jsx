@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { collection, query, where, getDocs } from 'firebase/firestore'
+import { addDoc, collection, getDocs, query, serverTimestamp, where } from 'firebase/firestore'
 import { db } from '../services/firebase'
 import Icon from '../components/Icon'
 
@@ -16,12 +16,19 @@ const AREAS = [
 ]
 
 function StarRating({ value = 0 }) {
+  const rating = Number(value)
   return (
     <div className="flex items-center gap-1 text-xs text-stone-500">
-      <Icon name="star" className={value > 0 ? 'w-3.5 h-3.5 text-amber-400' : 'w-3.5 h-3.5 text-stone-300'} filled={value > 0} />
-      <span>{value > 0 ? value.toFixed(1) : 'Novo'}</span>
+      <Icon name="star" className={rating > 0 ? 'w-3.5 h-3.5 text-amber-400' : 'w-3.5 h-3.5 text-stone-300'} filled={rating > 0} />
+      <span>{rating > 0 ? rating.toFixed(1) : 'Novo'}</span>
     </div>
   )
+}
+
+function normalizeRating(value) {
+  const rating = Number(String(value).replace(',', '.'))
+  if (!Number.isFinite(rating)) return null
+  return Math.min(5, Math.max(1, Math.round(rating)))
 }
 
 function ProfessionalCard({ prof, onAgendar }) {
@@ -98,28 +105,144 @@ function ProfessionalCard({ prof, onAgendar }) {
   )
 }
 
-export default function Professionals() {
+export default function Professionals({ user, viewerProfile }) {
   const [profissionais, setProfissionais] = useState([])
   const [loading, setLoading] = useState(true)
   const [busca, setBusca] = useState('')
   const [area, setArea] = useState('Todas')
   const [agendando, setAgendando] = useState(null)
+  const [requestForm, setRequestForm] = useState({ motivo: '', categoria: 'Outros' })
+  const [reviewForm, setReviewForm] = useState({ nota: '5', comentario: '' })
+  const [savingRequest, setSavingRequest] = useState(false)
+  const [savingReview, setSavingReview] = useState(false)
+  const [modalMessage, setModalMessage] = useState('')
+  const isProfessionalViewer = viewerProfile?.tipo === 'profissional'
 
   useEffect(() => {
     const fetchProfs = async () => {
       try {
         const q = query(collection(db, 'users'), where('tipo', '==', 'profissional'))
-        const snap = await getDocs(q)
-        const data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        const [snap, reviewSnap] = await Promise.all([
+          getDocs(q),
+          getDocs(collection(db, 'reviews')),
+        ])
+        const reviews = reviewSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+        const data = snap.docs.map(d => {
+          const prof = { id: d.id, ...d.data() }
+          const ownReviews = reviews
+            .filter((review) => review.profissionalUid === d.id)
+            .map((review) => normalizeRating(review.nota))
+            .filter((nota) => nota !== null)
+          const media = ownReviews.length ? ownReviews.reduce((sum, nota) => sum + nota, 0) / ownReviews.length : 0
+          return { ...prof, media, totalAvaliacoes: ownReviews.length }
+        })
         setProfissionais(data)
       } catch (e) {
-        console.error(e)
+        console.error('Erro ao carregar profissionais:', e)
       } finally {
         setLoading(false)
       }
     }
     fetchProfs()
   }, [])
+
+  const openContactModal = async (prof) => {
+    setAgendando(prof)
+    setRequestForm({ motivo: '', categoria: 'Outros' })
+    setReviewForm({ nota: '5', comentario: '' })
+    setModalMessage('')
+
+    try {
+      await addDoc(collection(db, 'profileViews'), {
+        profissionalUid: prof.id,
+        profissionalNome: prof.nome || '',
+        pacienteUid: user?.uid || 'anon',
+        pacienteNome: user?.displayName || 'Usuario anonimo',
+        origem: 'diretorio',
+        criadaEm: serverTimestamp(),
+      })
+    } catch (error) {
+      console.error('Erro ao registrar acesso ao perfil:', error)
+      setModalMessage('Perfil aberto, mas nao foi possivel registrar o acesso nas estatisticas.')
+    }
+  }
+
+  const sendRequest = async () => {
+    if (!agendando) return
+    if (isProfessionalViewer) {
+      setModalMessage('Perfis profissionais nao podem solicitar contato por este fluxo.')
+      return
+    }
+    if (!requestForm.motivo.trim()) {
+      setModalMessage('Descreva rapidamente o motivo do contato.')
+      return
+    }
+
+    setSavingRequest(true)
+    setModalMessage('')
+    try {
+      await addDoc(collection(db, 'requests'), {
+        profissionalUid: agendando.id,
+        profissionalNome: agendando.nome || '',
+        pacienteUid: user?.uid || 'anon',
+        pacienteNome: user?.displayName || 'Usuario anonimo',
+        pacienteEmail: user?.email || '',
+        motivo: requestForm.motivo.trim(),
+        categoria: requestForm.categoria || 'Outros',
+        status: 'nova',
+        criadaEm: serverTimestamp(),
+        atualizadaEm: serverTimestamp(),
+      })
+      setModalMessage('Solicitacao enviada com sucesso.')
+      setRequestForm({ motivo: '', categoria: 'Outros' })
+    } catch (error) {
+      console.error('Erro ao enviar solicitacao:', error)
+      setModalMessage(error.message || 'Nao foi possivel enviar a solicitacao.')
+    } finally {
+      setSavingRequest(false)
+    }
+  }
+
+  const sendReview = async () => {
+    if (!agendando) return
+    if (isProfessionalViewer) {
+      setModalMessage('Somente usuarios podem avaliar profissionais.')
+      return
+    }
+    const nota = normalizeRating(reviewForm.nota)
+    if (!nota) {
+      setModalMessage('Informe uma nota valida entre 1 e 5.')
+      return
+    }
+
+    setSavingReview(true)
+    setModalMessage('')
+    try {
+      await addDoc(collection(db, 'reviews'), {
+        profissionalUid: agendando.id,
+        profissionalNome: agendando.nome || '',
+        pacienteUid: user?.uid || 'anon',
+        pacienteNome: user?.displayName || 'Usuario anonimo',
+        nota,
+        comentario: reviewForm.comentario.trim(),
+        origem: 'diretorio',
+        criadaEm: serverTimestamp(),
+      })
+      setModalMessage('Avaliacao enviada com sucesso.')
+      setReviewForm({ nota: '5', comentario: '' })
+      setProfissionais((current) => current.map((prof) => {
+        if (prof.id !== agendando.id) return prof
+        const total = prof.totalAvaliacoes || 0
+        const media = total ? ((prof.media || 0) * total + nota) / (total + 1) : nota
+        return { ...prof, media, totalAvaliacoes: total + 1 }
+      }))
+    } catch (error) {
+      console.error('Erro ao enviar avaliacao:', error)
+      setModalMessage(error.message || 'Nao foi possivel enviar a avaliacao.')
+    } finally {
+      setSavingReview(false)
+    }
+  }
 
   const filtrados = profissionais.filter((p) => {
     const termo = busca.toLowerCase()
@@ -216,7 +339,7 @@ export default function Professionals() {
       ) : (
         <div className="space-y-4">
           {filtrados.map(prof => (
-            <ProfessionalCard key={prof.id} prof={prof} onAgendar={setAgendando} />
+            <ProfessionalCard key={prof.id} prof={prof} onAgendar={openContactModal} />
           ))}
         </div>
       )}
@@ -228,19 +351,53 @@ export default function Professionals() {
             <p className="text-stone-500 text-sm mb-4">
               Voce esta enviando uma solicitacao para <strong>{agendando.nome}</strong>.
             </p>
-            <div className="bg-stone-50 rounded-lg p-4 text-sm text-stone-600 mb-6 flex gap-2">
-              <Icon name="mail" className="w-4 h-4 text-brand-600 flex-shrink-0 mt-0.5" />
-              <span>Em breve voce recebera um e-mail com os proximos passos para agendar sua consulta.</span>
-            </div>
-            <div className="flex gap-3">
+            {modalMessage && (
+              <div className={`mb-4 rounded-lg border px-3 py-2 text-sm ${modalMessage.includes('sucesso') ? 'border-sage-100 bg-sage-50 text-sage-700' : 'border-amber-100 bg-amber-50 text-amber-800'}`}>
+                {modalMessage}
+              </div>
+            )}
+            {isProfessionalViewer ? (
+              <div className="rounded-lg border border-amber-100 bg-amber-50 p-4 text-sm text-amber-800">
+                Contas profissionais podem visualizar o diretorio, mas nao podem solicitar contato nem avaliar outros profissionais por este fluxo.
+              </div>
+            ) : (
+              <>
+                <div className="space-y-3">
+                  <div>
+                    <label className="label">Motivo do contato</label>
+                    <textarea className="input-field" rows={3} value={requestForm.motivo} onChange={(e) => setRequestForm((current) => ({ ...current, motivo: e.target.value }))} placeholder="Conte brevemente o que voce procura." />
+                  </div>
+                  <div>
+                    <label className="label">Categoria</label>
+                    <select className="input-field" value={requestForm.categoria} onChange={(e) => setRequestForm((current) => ({ ...current, categoria: e.target.value }))}>
+                      {AREAS.filter((item) => item !== 'Todas').map((item) => <option key={item}>{item}</option>)}
+                      <option>Outros</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="mt-5 rounded-lg border border-stone-200 bg-stone-50 p-4">
+                  <p className="mb-3 text-sm font-medium text-stone-800">Avaliar profissional</p>
+                  <div className="grid grid-cols-[92px_1fr] gap-3">
+                    <input type="number" min="1" max="5" step="1" className="input-field" value={reviewForm.nota} onChange={(e) => setReviewForm((current) => ({ ...current, nota: e.target.value }))} />
+                    <input className="input-field" value={reviewForm.comentario} onChange={(e) => setReviewForm((current) => ({ ...current, comentario: e.target.value }))} placeholder="Comentario opcional" />
+                  </div>
+                  <button onClick={sendReview} disabled={savingReview} className="btn-secondary mt-3 w-full gap-2">
+                    <Icon name="star" className="w-4 h-4" />
+                    {savingReview ? 'Salvando...' : 'Enviar avaliacao'}
+                  </button>
+                </div>
+              </>
+            )}
+            <div className="mt-5 flex gap-3">
               <button onClick={() => setAgendando(null)} className="btn-secondary flex-1">
                 Cancelar
               </button>
               <button
-                onClick={() => { alert('Solicitacao enviada! Funcionalidade em desenvolvimento.'); setAgendando(null) }}
+                onClick={sendRequest}
+                disabled={savingRequest || isProfessionalViewer}
                 className="btn-primary flex-1"
               >
-                Confirmar
+                {savingRequest ? 'Enviando...' : 'Confirmar'}
               </button>
             </div>
           </div>

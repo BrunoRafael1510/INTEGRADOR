@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { deleteDoc, doc, increment, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, arrayUnion, collection, where } from 'firebase/firestore'
+import { addDoc, deleteDoc, doc, increment, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, arrayUnion, collection, where } from 'firebase/firestore'
 import { deleteUser, updateEmail, updatePassword } from 'firebase/auth'
 import { db } from '../services/firebase'
 import Icon from '../components/Icon'
@@ -42,6 +42,37 @@ function average(values) {
   const valid = values.filter((item) => Number.isFinite(item))
   if (!valid.length) return 0
   return valid.reduce((sum, item) => sum + item, 0) / valid.length
+}
+
+function normalizeRating(value) {
+  const rating = Number(String(value).replace(',', '.'))
+  if (!Number.isFinite(rating)) return null
+  return Math.min(5, Math.max(1, Math.round(rating)))
+}
+
+function normalizeMoney(value) {
+  if (value === '' || value === null || value === undefined) return null
+  const number = Number(String(value).replace(/[^\d,.-]/g, '').replace(',', '.'))
+  return Number.isFinite(number) && number >= 0 ? number : null
+}
+
+function formatMoney(value) {
+  const number = normalizeMoney(value)
+  return number === null ? 'Nao informado' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(number)
+}
+
+function toDateTimeLocal(value) {
+  const date = toDate(value)
+  if (!date) return ''
+  const offset = date.getTimezoneOffset()
+  return new Date(date.getTime() - offset * 60000).toISOString().slice(0, 16)
+}
+
+function toLocalDateInput(date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 function arrayFromText(value) {
@@ -288,18 +319,46 @@ function buildMetrics({ posts, requests, appointments, reviews, profileViews }, 
 
 function OverviewPage({ user, profile, data, metrics, onNavigate }) {
   const completion = profileCompletion(profile)
+  const nextAppointment = [...data.appointments]
+    .filter((item) => !['concluida', 'finalizada', 'cancelada'].includes(item.status))
+    .sort((a, b) => (toDate(a.data)?.getTime() || 0) - (toDate(b.data)?.getTime() || 0))[0]
+  const newestRequest = [...data.requests]
+    .sort((a, b) => (toDate(b.criadaEm)?.getTime() || 0) - (toDate(a.criadaEm)?.getTime() || 0))[0]
+  const pendingProfileItems = PROFILE_FIELDS.filter((field) => {
+    const value = profile?.[field]
+    return Array.isArray(value) ? value.length === 0 : !value
+  }).slice(0, 4)
 
   return (
-    <div>
-      <SectionHeader
-        eyebrow="Central profissional SafeTalk"
-        title={`Ola, ${profile?.nome || user?.displayName || 'profissional'}`}
-        description="Indicadores, solicitacoes e atividades abaixo sao calculados apenas a partir dos dados persistidos no Firebase."
-        actions={[
-          <button key="profile" onClick={() => onNavigate('profile')} className="btn-primary gap-2"><Icon name="edit" />Editar perfil</button>,
-          <button key="requests" onClick={() => onNavigate('requests')} className="btn-secondary gap-2"><Icon name="inbox" />Solicitacoes</button>,
-        ]}
-      />
+    <div className="space-y-6">
+      <section className="overflow-hidden rounded-lg border border-brand-100 bg-brand-800 p-6 text-stone-50 shadow-card">
+        <div className="grid gap-6 lg:grid-cols-[1fr_360px] lg:items-end">
+          <div>
+            <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-stone-50/15 bg-stone-50/10 px-3 py-1.5 text-xs font-medium text-brand-50">
+              <Icon name="activity" className="h-3.5 w-3.5" />
+              Painel profissional
+            </span>
+            <h1 className="font-sans text-3xl font-bold tracking-normal md:text-4xl">
+              {profile?.nome || user?.displayName || 'Profissional'}, seu dia em uma tela.
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-brand-50/85">
+              Acompanhe demanda, reputacao, agenda e pendencias do perfil sem depender de numeros ficticios.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <button onClick={() => onNavigate('schedule')} className="rounded-lg border border-stone-50/15 bg-stone-50/10 p-4 text-left transition-colors hover:bg-stone-50/15">
+              <Icon name="calendar" className="mb-3 h-5 w-5 text-brand-100" />
+              <span className="block text-sm font-semibold">Abrir agenda</span>
+              <span className="mt-1 block text-xs text-brand-50/75">{nextAppointment ? formatDate(nextAppointment.data) : 'Sem evento ativo'}</span>
+            </button>
+            <button onClick={() => onNavigate('requests')} className="rounded-lg border border-stone-50/15 bg-stone-50/10 p-4 text-left transition-colors hover:bg-stone-50/15">
+              <Icon name="inbox" className="mb-3 h-5 w-5 text-brand-100" />
+              <span className="block text-sm font-semibold">Solicitacoes</span>
+              <span className="mt-1 block text-xs text-brand-50/75">{metrics.pendingRequests} aguardando</span>
+            </button>
+          </div>
+        </div>
+      </section>
 
       {data.error && (
         <div className="mb-4 rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -307,47 +366,78 @@ function OverviewPage({ user, profile, data, metrics, onNavigate }) {
         </div>
       )}
 
-      <section className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Total de atendimentos" value={metrics.completedAppointments} icon="users" hint="Atendimentos finalizados" />
-        <StatCard label="Perfil visualizado" value={metrics.profileViews} icon="eye" hint="Registros em profileViews" />
-        <StatCard label="Mensagens respondidas" value={metrics.answeredMessages} icon="message" hint="Respostas em desabafos" />
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Agenda finalizada" value={metrics.completedAppointments} icon="users" hint="Consultas e solicitacoes finalizadas" />
+        <StatCard label="Acessos ao perfil" value={metrics.profileViews} icon="eye" hint="Cliques reais no diretorio" />
         <StatCard label="Solicitacoes pendentes" value={metrics.pendingRequests} icon="inbox" hint="Status nova ou pendente" />
         <StatCard label="Avaliacao media" value={metrics.averageRating} icon="star" hint="Media das avaliacoes reais" />
-        <StatCard label="Taxa de resposta" value={metrics.responseRate} icon="activity" hint="Solicitacoes respondidas" />
-        <StatCard label="Tempo medio de resposta" value={metrics.averageResponseTime} icon="clock" hint="Primeira resposta ao desabafo" />
-        <StatCard label="Pacientes ajudados" value={metrics.helpedPatients} icon="heart" hint="Pacientes finalizados" />
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[1fr_420px]">
+      <section className="grid gap-4 lg:grid-cols-[1.1fr_.9fr]">
         <div className="card p-5">
-          <div className="mb-4 flex items-center justify-between gap-4">
+          <div className="mb-5 flex items-center justify-between gap-4">
             <div>
-              <h2 className="font-sans text-base font-semibold text-stone-950">Perfil profissional</h2>
-              <p className="text-sm text-stone-500">Campos completos atualizam a barra automaticamente.</p>
+              <h2 className="font-sans text-base font-semibold text-stone-950">Fila de atencao</h2>
+              <p className="text-sm text-stone-500">O que merece resposta primeiro.</p>
+            </div>
+            <button onClick={() => onNavigate('requests')} className="btn-secondary px-3 py-2 text-xs">Ver tudo</button>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-lg border border-stone-200 bg-stone-50/70 p-4">
+              <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-stone-900">
+                <Icon name="calendar" />
+                Proximo horario
+              </div>
+              <p className="text-sm text-stone-600">{nextAppointment ? nextAppointment.pacienteNome || 'Paciente anonimo' : 'Nada agendado'}</p>
+              <p className="mt-1 text-xs text-stone-400">{nextAppointment ? formatDate(nextAppointment.data) : 'Selecione horarios na agenda.'}</p>
+            </div>
+            <div className="rounded-lg border border-stone-200 bg-stone-50/70 p-4">
+              <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-stone-900">
+                <Icon name="inbox" />
+                Pedido mais recente
+              </div>
+              <p className="text-sm text-stone-600">{newestRequest ? newestRequest.pacienteNome || 'Paciente anonimo' : 'Nenhum pedido novo'}</p>
+              <p className="mt-1 line-clamp-2 text-xs text-stone-400">{newestRequest ? newestRequest.motivo || 'Sem motivo informado' : 'Pedidos aparecem quando usuarios solicitarem contato.'}</p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-lg border border-stone-200 p-3">
+              <p className="text-xs text-stone-400">Taxa resposta</p>
+              <p className="mt-1 text-xl font-bold text-stone-900">{metrics.responseRate}</p>
+            </div>
+            <div className="rounded-lg border border-stone-200 p-3">
+              <p className="text-xs text-stone-400">Tempo medio</p>
+              <p className="mt-1 text-xl font-bold text-stone-900">{metrics.averageResponseTime}</p>
+            </div>
+            <div className="rounded-lg border border-stone-200 p-3">
+              <p className="text-xs text-stone-400">Pacientes ajudados</p>
+              <p className="mt-1 text-xl font-bold text-stone-900">{metrics.helpedPatients}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="card p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="font-sans text-base font-semibold text-stone-950">Perfil no diretorio</h2>
+              <p className="text-sm text-stone-500">Impacta confianca e solicitacoes.</p>
             </div>
             <span className="badge border border-brand-100 bg-brand-50 text-brand-700">{completion}%</span>
           </div>
           <ProgressBar value={completion} />
-          <ProfilePreview profile={profile} />
-        </div>
-
-        <div className="card p-5">
-          <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Solicitacoes recentes</h2>
-          {data.requests.length ? (
-            <div className="space-y-3">
-              {data.requests.slice(0, 5).map((request) => (
-                <div key={request.id} className="rounded-lg border border-stone-200 p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-medium text-stone-800">{request.pacienteNome || 'Paciente anonimo'}</p>
-                    <span className="badge border border-stone-200 bg-stone-50 text-stone-600">{request.status || 'nova'}</span>
-                  </div>
-                  <p className="mt-1 line-clamp-2 text-sm text-stone-500">{request.motivo || 'Sem motivo informado'}</p>
-                  <p className="mt-2 text-xs text-stone-400">{formatDate(request.criadaEm)}</p>
+          {pendingProfileItems.length ? (
+            <div className="mt-4 space-y-2">
+              {pendingProfileItems.map((field) => (
+                <div key={field} className="flex items-center justify-between rounded-lg border border-stone-200 px-3 py-2 text-sm">
+                  <span className="capitalize text-stone-500">{field}</span>
+                  <button onClick={() => onNavigate('profile')} className="text-xs font-medium text-brand-700 hover:underline">Completar</button>
                 </div>
               ))}
             </div>
           ) : (
-            <EmptyState icon="inbox" title="Nenhuma solicitacao" description="Quando pacientes solicitarem contato, os pedidos aparecem aqui." />
+            <ProfilePreview profile={profile} />
           )}
         </div>
       </section>
@@ -387,7 +477,7 @@ function ProfilePreview({ profile }) {
             </div>
             <div className="rounded-lg border border-stone-200 bg-stone-100/50 p-3">
               <p className="text-xs text-slate-400">Valor</p>
-              <p className="text-sm font-semibold text-slate-800">{profile?.valorConsulta || 'Nao informado'}</p>
+              <p className="text-sm font-semibold text-slate-800">{formatMoney(profile?.valorConsulta)}</p>
             </div>
             <div className="rounded-lg border border-stone-200 bg-stone-100/50 p-3">
               <p className="text-xs text-slate-400">Disponibilidade</p>
@@ -410,49 +500,69 @@ function ProfilePreview({ profile }) {
 function ProfilePage({ user, profile, onNavigate }) {
   const [draft, setDraft] = useState(profile || {})
   const [saveState, setSaveState] = useState('salvo')
+  const [saveMessage, setSaveMessage] = useState('')
 
   useEffect(() => {
     setDraft(profile || {})
   }, [profile])
 
-  useEffect(() => {
-    if (!user?.uid || !draft?.uid) return undefined
-    setSaveState('salvando')
-    const timer = window.setTimeout(async () => {
-      try {
-        await updateDoc(doc(db, 'users', user.uid), {
-          ...draft,
-          areas: Array.isArray(draft.areas) ? draft.areas : arrayFromText(draft.areas || ''),
-          idiomas: Array.isArray(draft.idiomas) ? draft.idiomas : arrayFromText(draft.idiomas || ''),
-          atualizadoEm: serverTimestamp(),
-        })
-        setSaveState('salvo')
-      } catch (error) {
-        console.error(error)
-        setSaveState('erro')
-      }
-    }, 700)
-    return () => window.clearTimeout(timer)
-  }, [draft, user?.uid])
+  const saveProfile = async (event) => {
+    event.preventDefault()
+    if (!user?.uid) return
 
-  const setField = (field, value) => setDraft((current) => ({ ...current, [field]: value }))
+    const valorConsulta = normalizeMoney(draft.valorConsulta)
+    if (draft.valorConsulta && valorConsulta === null) {
+      setSaveState('erro')
+      setSaveMessage('Informe um valor de consulta valido.')
+      return
+    }
+
+    setSaveState('salvando')
+    setSaveMessage('')
+    try {
+      await setDoc(doc(db, 'users', user.uid), {
+        ...draft,
+        uid: user.uid,
+        email: user.email || draft.email || '',
+        tipo: 'profissional',
+        valorConsulta,
+        areas: Array.isArray(draft.areas) ? draft.areas : arrayFromText(draft.areas || ''),
+        idiomas: Array.isArray(draft.idiomas) ? draft.idiomas : arrayFromText(draft.idiomas || ''),
+        atualizadoEm: serverTimestamp(),
+      }, { merge: true })
+      setSaveState('salvo')
+      setSaveMessage('Perfil salvo com sucesso.')
+    } catch (error) {
+      console.error('Erro ao salvar perfil profissional:', error)
+      setSaveState('erro')
+      setSaveMessage(error.message || 'Nao foi possivel salvar o perfil.')
+    } finally {
+      window.setTimeout(() => setSaveMessage(''), 3500)
+    }
+  }
+
+  const setField = (field, value) => {
+    setSaveState('editando')
+    setSaveMessage('')
+    setDraft((current) => ({ ...current, [field]: value }))
+  }
   const completion = profileCompletion(draft)
 
   return (
     <div>
       <SectionHeader
         title="Meu Perfil"
-        description="Toda alteracao e salva automaticamente no documento do profissional em users."
+        description="As alteracoes sao salvas no documento do profissional em users."
         actions={[
           <button key="view" onClick={() => onNavigate('professionals')} className="btn-secondary gap-2"><Icon name="eye" />Visualizar como paciente</button>,
           <span key="state" className={`badge border ${saveState === 'erro' ? 'border-red-100 bg-red-50 text-red-700' : 'border-sage-100 bg-sage-50 text-sage-700'}`}>
-            {saveState === 'salvando' ? 'Salvando...' : saveState === 'erro' ? 'Erro ao salvar' : 'Salvo'}
+            {saveState === 'salvando' ? 'Salvando...' : saveState === 'erro' ? 'Erro ao salvar' : saveState === 'editando' ? 'Alteracoes pendentes' : 'Salvo'}
           </span>,
         ]}
       />
 
       <div className="grid gap-4 lg:grid-cols-[1fr_420px]">
-        <form className="card profile-form grid gap-4 p-5 sm:grid-cols-2">
+        <form onSubmit={saveProfile} className="card profile-form grid gap-4 p-5 sm:grid-cols-2">
           <div>
             <label className="label">Foto de perfil (URL)</label>
             <input className="input-field" value={draft.fotoUrl || ''} onChange={(e) => setField('fotoUrl', e.target.value)} placeholder="https://..." />
@@ -496,7 +606,7 @@ function ProfilePage({ user, profile, onNavigate }) {
           </div>
           <div>
             <label className="label">Valor da consulta</label>
-            <input className="input-field" value={draft.valorConsulta || ''} onChange={(e) => setField('valorConsulta', e.target.value)} placeholder="Ex: R$ 180,00" />
+            <input type="number" min="0" step="0.01" className="input-field" value={draft.valorConsulta ?? ''} onChange={(e) => setField('valorConsulta', e.target.value)} placeholder="Ex: 180,00" />
           </div>
           <div>
             <label className="label">Cidade</label>
@@ -522,6 +632,17 @@ function ProfilePage({ user, profile, onNavigate }) {
             <label className="label">Biografia</label>
             <textarea className="input-field" rows={5} value={draft.descricao || ''} onChange={(e) => setField('descricao', e.target.value)} />
           </div>
+          {saveMessage && (
+            <div className={`sm:col-span-2 rounded-lg border px-4 py-3 text-sm ${saveState === 'erro' ? 'border-red-100 bg-red-50 text-red-700' : 'border-sage-100 bg-sage-50 text-sage-700'}`}>
+              {saveMessage}
+            </div>
+          )}
+          <div className="sm:col-span-2 flex justify-end">
+            <button type="submit" disabled={saveState === 'salvando'} className="btn-primary gap-2">
+              <Icon name="save" />
+              {saveState === 'salvando' ? 'Salvando...' : 'Salvar perfil'}
+            </button>
+          </div>
         </form>
 
         <aside className="space-y-4">
@@ -544,19 +665,37 @@ function ProfilePage({ user, profile, onNavigate }) {
 
 function RequestsPage({ requests }) {
   const [selected, setSelected] = useState(null)
+  const [busyId, setBusyId] = useState('')
+  const [message, setMessage] = useState('')
 
   const updateStatus = async (request, status) => {
-    await updateDoc(doc(db, 'requests', request.id), {
-      status,
-      respondidaEm: ['aceita', 'recusada'].includes(status) ? serverTimestamp() : request.respondidaEm || null,
-      finalizadaEm: status === 'finalizada' ? serverTimestamp() : request.finalizadaEm || null,
-      atualizadaEm: serverTimestamp(),
-    })
+    setBusyId(`${request.id}-${status}`)
+    setMessage('')
+    try {
+      await updateDoc(doc(db, 'requests', request.id), {
+        status,
+        respondidaEm: ['aceita', 'recusada'].includes(status) ? serverTimestamp() : request.respondidaEm || null,
+        finalizadaEm: status === 'finalizada' ? serverTimestamp() : request.finalizadaEm || null,
+        atualizadaEm: serverTimestamp(),
+      })
+      setMessage('Solicitacao atualizada com sucesso.')
+      if (selected?.id === request.id) setSelected((current) => ({ ...current, status }))
+    } catch (error) {
+      console.error('Erro ao atualizar solicitacao:', error)
+      setMessage(error.message || 'Nao foi possivel atualizar a solicitacao.')
+    } finally {
+      setBusyId('')
+    }
   }
 
   return (
     <div>
       <SectionHeader title="Solicitacoes" description="Central real de pedidos de contato enviados pelos pacientes." />
+      {message && (
+        <div className={`mb-4 rounded-lg border px-4 py-3 text-sm ${message.includes('sucesso') ? 'border-sage-100 bg-sage-50 text-sage-700' : 'border-red-100 bg-red-50 text-red-700'}`}>
+          {message}
+        </div>
+      )}
 
       <section className="mb-6 grid gap-3 sm:grid-cols-5">
         {REQUEST_STATUS.map((status) => (
@@ -582,10 +721,10 @@ function RequestsPage({ requests }) {
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <button onClick={() => updateStatus(request, 'aceita')} className="btn-primary px-3 py-2 text-xs">Aceitar</button>
-                  <button onClick={() => updateStatus(request, 'recusada')} className="btn-secondary px-3 py-2 text-xs">Recusar</button>
+                  <button onClick={() => updateStatus(request, 'aceita')} disabled={Boolean(busyId)} className="btn-primary px-3 py-2 text-xs">{busyId === `${request.id}-aceita` ? 'Salvando...' : 'Aceitar'}</button>
+                  <button onClick={() => updateStatus(request, 'recusada')} disabled={Boolean(busyId)} className="btn-secondary px-3 py-2 text-xs">{busyId === `${request.id}-recusada` ? 'Salvando...' : 'Recusar'}</button>
                   <button onClick={() => setSelected(request)} className="btn-secondary px-3 py-2 text-xs">Detalhes</button>
-                  <button onClick={() => updateStatus(request, 'finalizada')} className="btn-secondary px-3 py-2 text-xs">Finalizar</button>
+                  <button onClick={() => updateStatus(request, 'finalizada')} disabled={Boolean(busyId)} className="btn-secondary px-3 py-2 text-xs">{busyId === `${request.id}-finalizada` ? 'Salvando...' : 'Finalizar'}</button>
                 </div>
               </div>
             </article>
@@ -621,6 +760,7 @@ function RequestsPage({ requests }) {
 function CommunityPage({ posts, savedIds, user }) {
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('Todas')
+  const [message, setMessage] = useState('')
 
   const filtered = posts.filter((post) => {
     const matchCategory = category === 'Todas' || post.categoria === category
@@ -629,17 +769,30 @@ function CommunityPage({ posts, savedIds, user }) {
   })
 
   const toggleSaved = async (post) => {
-    const ref = doc(db, 'users', user.uid, 'savedPosts', post.id)
-    if (savedIds.includes(post.id)) {
-      await deleteDoc(ref)
-      return
+    setMessage('')
+    try {
+      const ref = doc(db, 'users', user.uid, 'savedPosts', post.id)
+      if (savedIds.includes(post.id)) {
+        await deleteDoc(ref)
+        setMessage('Publicacao removida dos salvos.')
+        return
+      }
+      await setDoc(ref, { postId: post.id, salvoEm: serverTimestamp() })
+      setMessage('Publicacao salva com sucesso.')
+    } catch (error) {
+      console.error('Erro ao atualizar salvos:', error)
+      setMessage(error.message || 'Nao foi possivel atualizar os salvos.')
     }
-    await setDoc(ref, { postId: post.id, salvoEm: serverTimestamp() })
   }
 
   return (
     <div>
       <SectionHeader title="Comunidade" description="Feed real de desabafos, interacoes, filtros e publicacoes salvas." />
+      {message && (
+        <div className={`mb-4 rounded-lg border px-4 py-3 text-sm ${message.includes('sucesso') || message.includes('removida') ? 'border-sage-100 bg-sage-50 text-sage-700' : 'border-red-100 bg-red-50 text-red-700'}`}>
+          {message}
+        </div>
+      )}
       <div className="card mb-5 grid gap-3 p-4 md:grid-cols-[1fr_auto]">
         <div className="relative">
           <Icon name="search" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
@@ -680,6 +833,8 @@ function CommunityPage({ posts, savedIds, user }) {
 function AnswerPage({ posts, user }) {
   const [category, setCategory] = useState('Todas')
   const [replyByPost, setReplyByPost] = useState({})
+  const [sendingId, setSendingId] = useState('')
+  const [message, setMessage] = useState('')
 
   const pending = posts.filter((post) => (post.respostas?.length || 0) === 0)
   const filtered = category === 'Todas' ? pending : pending.filter((post) => post.categoria === category)
@@ -687,25 +842,40 @@ function AnswerPage({ posts, user }) {
   const sendReply = async (post) => {
     const text = replyByPost[post.id]?.trim()
     if (!text) return
-    await updateDoc(doc(db, 'posts', post.id), {
-      respostas: arrayUnion({
-        id: `${user.uid}-${Date.now()}`,
-        texto: text,
-        autorUid: user.uid,
-        autorNome: user.displayName || 'Profissional',
-        criadaEm: new Date().toISOString(),
-        tipoAutor: 'profissional',
-      }),
-      totalRespostas: increment(1),
-      primeiraRespostaProfissionalEm: post.primeiraRespostaProfissionalEm || serverTimestamp(),
-      atualizadoEm: serverTimestamp(),
-    })
-    setReplyByPost((current) => ({ ...current, [post.id]: '' }))
+    setSendingId(post.id)
+    setMessage('')
+    try {
+      await updateDoc(doc(db, 'posts', post.id), {
+        respostas: arrayUnion({
+          id: `${user.uid}-${Date.now()}`,
+          texto: text,
+          autorUid: user.uid,
+          autorNome: user.displayName || 'Profissional',
+          criadaEm: new Date().toISOString(),
+          tipoAutor: 'profissional',
+        }),
+        totalRespostas: increment(1),
+        primeiraRespostaProfissionalEm: post.primeiraRespostaProfissionalEm || serverTimestamp(),
+        atualizadoEm: serverTimestamp(),
+      })
+      setReplyByPost((current) => ({ ...current, [post.id]: '' }))
+      setMessage('Resposta enviada com sucesso.')
+    } catch (error) {
+      console.error('Erro ao enviar resposta profissional:', error)
+      setMessage(error.message || 'Nao foi possivel enviar a resposta.')
+    } finally {
+      setSendingId('')
+    }
   }
 
   return (
     <div>
       <SectionHeader title="Responder Desabafos" description="Mostra apenas desabafos reais sem respostas registradas." />
+      {message && (
+        <div className={`mb-4 rounded-lg border px-4 py-3 text-sm ${message.includes('sucesso') ? 'border-sage-100 bg-sage-50 text-sage-700' : 'border-red-100 bg-red-50 text-red-700'}`}>
+          {message}
+        </div>
+      )}
       <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
         {CATEGORIES.map((item) => (
           <button key={item} onClick={() => setCategory(item)} className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-150 ${category === item ? 'border-brand-600 bg-brand-600 text-stone-50' : 'border-stone-200 bg-stone-50/80 text-stone-600 hover:border-brand-200 hover:text-brand-700'}`}>
@@ -734,7 +904,7 @@ function AnswerPage({ posts, user }) {
                 placeholder="Responder com acolhimento..."
               />
               <div className="mt-3 flex justify-end">
-                <button onClick={() => sendReply(post)} disabled={!replyByPost[post.id]?.trim()} className="btn-primary gap-2"><Icon name="message" />Responder</button>
+                <button onClick={() => sendReply(post)} disabled={!replyByPost[post.id]?.trim() || Boolean(sendingId)} className="btn-primary gap-2"><Icon name="message" />{sendingId === post.id ? 'Enviando...' : 'Responder'}</button>
               </div>
             </article>
           ))}
@@ -747,16 +917,19 @@ function AnswerPage({ posts, user }) {
 }
 
 function ReviewsPage({ reviews }) {
-  const averageRating = average(reviews.map((review) => Number(review.nota)))
-  const distribution = [5, 4, 3, 2, 1].map((star) => ({ label: `${star} estrelas`, value: reviews.filter((review) => Number(review.nota) === star).length }))
+  const normalizedReviews = reviews
+    .map((review) => ({ ...review, nota: normalizeRating(review.nota) }))
+    .filter((review) => review.nota !== null)
+  const averageRating = average(normalizedReviews.map((review) => review.nota))
+  const distribution = [5, 4, 3, 2, 1].map((star) => ({ label: `${star} estrelas`, value: normalizedReviews.filter((review) => review.nota === star).length }))
 
   return (
     <div>
-      <SectionHeader title="Avaliacoes" description="Reputacao calculada diretamente da colecao reviews." />
+      <SectionHeader title="Avaliacoes" description="Somente usuarios podem avaliar profissionais. Aqui voce acompanha a reputacao recebida." />
       <section className="mb-6 grid gap-4 md:grid-cols-3">
         <StatCard label="Nota media" value={averageRating ? averageRating.toFixed(1) : '0'} icon="star" />
-        <StatCard label="Total de avaliacoes" value={reviews.length} icon="message" />
-        <StatCard label="Comentarios recentes" value={reviews.filter((item) => item.comentario).length} icon="file" />
+        <StatCard label="Total de avaliacoes" value={normalizedReviews.length} icon="message" />
+        <StatCard label="Comentarios recentes" value={normalizedReviews.filter((item) => item.comentario).length} icon="file" />
       </section>
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="card p-5">
@@ -765,9 +938,9 @@ function ReviewsPage({ reviews }) {
         </div>
         <div className="card p-5">
           <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Comentarios recentes</h2>
-          {reviews.some((item) => item.comentario) ? (
+          {normalizedReviews.some((item) => item.comentario) ? (
             <div className="space-y-3">
-              {reviews.filter((item) => item.comentario).slice(0, 5).map((review) => (
+              {normalizedReviews.filter((item) => item.comentario).slice(0, 5).map((review) => (
                 <div key={review.id} className="rounded-lg border border-stone-200 p-3">
                   <p className="text-sm text-stone-700">{review.comentario}</p>
                   <p className="mt-2 text-xs text-stone-400">{review.nota || 0} estrelas - {formatDate(review.criadaEm)}</p>
@@ -785,43 +958,291 @@ function ReviewsPage({ reviews }) {
 
 function SchedulePage({ appointments, profile, user }) {
   const [availability, setAvailability] = useState(profile?.disponibilidade || '')
-  const upcoming = appointments.filter((item) => !['concluida', 'finalizada', 'cancelada'].includes(item.status))
+  const [appointmentForm, setAppointmentForm] = useState({
+    id: '',
+    pacienteNome: '',
+    data: '',
+    modalidade: profile?.atendimento || 'Online',
+    status: 'agendada',
+    observacoes: '',
+  })
+  const [savingAvailability, setSavingAvailability] = useState(false)
+  const [savingAppointment, setSavingAppointment] = useState(false)
+  const [message, setMessage] = useState('')
+  const sortedAppointments = [...appointments].sort((a, b) => {
+    const dateA = toDate(a.data)?.getTime() || 0
+    const dateB = toDate(b.data)?.getTime() || 0
+    return dateA - dateB
+  })
+  const upcoming = sortedAppointments.filter((item) => !['concluida', 'finalizada', 'cancelada'].includes(item.status))
+  const scheduleDays = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date()
+    date.setHours(0, 0, 0, 0)
+    date.setDate(date.getDate() + index)
+    return date
+  })
+  const scheduleHours = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00']
+
+  const slotKey = (date, hour) => `${toLocalDateInput(date)}T${hour}`
+  const appointmentSlotKey = (appointment) => {
+    const date = toDate(appointment.data)
+    if (!date) return ''
+    return `${toLocalDateInput(date)}T${String(date.getHours()).padStart(2, '0')}:00`
+  }
+  const appointmentBySlot = new Map(
+    upcoming.map((appointment) => [appointmentSlotKey(appointment), appointment])
+  )
 
   useEffect(() => {
     setAvailability(profile?.disponibilidade || '')
   }, [profile?.disponibilidade])
 
+  const selectSlot = (date, hour) => {
+    const existing = appointmentBySlot.get(slotKey(date, hour))
+    if (existing) {
+      editAppointment(existing)
+      return
+    }
+    setAppointmentForm((current) => ({
+      ...current,
+      id: '',
+      data: `${toLocalDateInput(date)}T${hour}`,
+      status: 'agendada',
+      modalidade: current.modalidade || profile?.atendimento || 'Online',
+    }))
+  }
+
   const saveAvailability = async () => {
-    await updateDoc(doc(db, 'users', user.uid), { disponibilidade: availability, atualizadoEm: serverTimestamp() })
+    setSavingAvailability(true)
+    setMessage('')
+    try {
+      await updateDoc(doc(db, 'users', user.uid), { disponibilidade: availability, atualizadoEm: serverTimestamp() })
+      setMessage('Disponibilidade salva com sucesso.')
+    } catch (error) {
+      console.error('Erro ao salvar disponibilidade:', error)
+      setMessage(error.message || 'Nao foi possivel salvar a disponibilidade.')
+    } finally {
+      setSavingAvailability(false)
+    }
+  }
+
+  const resetAppointmentForm = () => {
+    setAppointmentForm({
+      id: '',
+      pacienteNome: '',
+      data: '',
+      modalidade: profile?.atendimento || 'Online',
+      status: 'agendada',
+      observacoes: '',
+    })
+  }
+
+  const saveAppointment = async (event) => {
+    event.preventDefault()
+    if (!user?.uid || !appointmentForm.data) {
+      setMessage('Informe pelo menos data e horario do atendimento.')
+      return
+    }
+
+    setSavingAppointment(true)
+    setMessage('')
+    try {
+      const payload = {
+        profissionalUid: user.uid,
+        profissionalNome: profile?.nome || user.displayName || 'Profissional',
+        pacienteNome: appointmentForm.pacienteNome || 'Paciente anonimo',
+        data: new Date(appointmentForm.data).toISOString(),
+        modalidade: appointmentForm.modalidade || profile?.atendimento || 'Online',
+        status: appointmentForm.status || 'agendada',
+        observacoes: appointmentForm.observacoes || '',
+        atualizadaEm: serverTimestamp(),
+      }
+
+      if (appointmentForm.id) {
+        await updateDoc(doc(db, 'appointments', appointmentForm.id), payload)
+        setMessage('Atendimento atualizado com sucesso.')
+      } else {
+        await addDoc(collection(db, 'appointments'), {
+          ...payload,
+          criadaEm: serverTimestamp(),
+        })
+        setMessage('Atendimento criado com sucesso.')
+      }
+      resetAppointmentForm()
+    } catch (error) {
+      console.error('Erro ao salvar atendimento:', error)
+      setMessage(error.message || 'Nao foi possivel salvar o atendimento.')
+    } finally {
+      setSavingAppointment(false)
+    }
+  }
+
+  const editAppointment = (appointment) => {
+    setAppointmentForm({
+      id: appointment.id,
+      pacienteNome: appointment.pacienteNome || '',
+      data: toDateTimeLocal(appointment.data),
+      modalidade: appointment.modalidade || profile?.atendimento || 'Online',
+      status: appointment.status || 'agendada',
+      observacoes: appointment.observacoes || '',
+    })
+  }
+
+  const removeAppointment = async (appointment) => {
+    if (!window.confirm('Excluir este evento da agenda?')) return
+    setSavingAppointment(true)
+    setMessage('')
+    try {
+      await deleteDoc(doc(db, 'appointments', appointment.id))
+      setMessage('Atendimento excluido com sucesso.')
+      if (appointmentForm.id === appointment.id) resetAppointmentForm()
+    } catch (error) {
+      console.error('Erro ao excluir atendimento:', error)
+      setMessage(error.message || 'Nao foi possivel excluir o atendimento.')
+    } finally {
+      setSavingAppointment(false)
+    }
   }
 
   return (
     <div>
-      <SectionHeader title="Agenda" description="Agenda real baseada na colecao appointments e na disponibilidade do perfil." />
-      <div className="grid gap-4 lg:grid-cols-[380px_1fr]">
-        <div className="card p-5">
-          <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Disponibilidade semanal</h2>
-          <textarea className="input-field" rows={6} value={availability} onChange={(e) => setAvailability(e.target.value)} placeholder="Ex: Segunda a sexta, 18h as 21h" />
-          <button onClick={saveAvailability} className="btn-primary mt-3 w-full gap-2"><Icon name="save" />Editar horarios</button>
+      <SectionHeader title="Agenda" description="Selecione um dia e horario na grade para criar ou editar eventos salvos em appointments." />
+      {message && (
+        <div className={`mb-4 rounded-lg border px-4 py-3 text-sm ${message.includes('sucesso') ? 'border-sage-100 bg-sage-50 text-sage-700' : 'border-red-100 bg-red-50 text-red-700'}`}>
+          {message}
         </div>
-        <div className="card p-5">
-          <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Proximos atendimentos</h2>
-          {upcoming.length ? (
+      )}
+      <div className="grid gap-4 xl:grid-cols-[360px_1fr]">
+        <div className="space-y-4">
+          <div className="card p-5">
+            <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Disponibilidade semanal</h2>
+            <textarea className="input-field" rows={5} value={availability} onChange={(e) => setAvailability(e.target.value)} placeholder="Ex: Segunda a sexta, 18h as 21h" />
+            <button onClick={saveAvailability} disabled={savingAvailability} className="btn-primary mt-3 w-full gap-2"><Icon name="save" />{savingAvailability ? 'Salvando...' : 'Salvar horarios'}</button>
+          </div>
+
+          <form onSubmit={saveAppointment} className="card p-5">
+            <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">{appointmentForm.id ? 'Editar evento' : 'Novo evento'}</h2>
             <div className="space-y-3">
-              {upcoming.map((appointment) => (
-                <div key={appointment.id} className="rounded-lg border border-stone-200 p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-medium text-stone-800">{appointment.pacienteNome || 'Paciente anonimo'}</p>
-                    <span className="badge border border-stone-200 bg-stone-50 text-stone-600">{appointment.status || 'agendada'}</span>
-                  </div>
-                  <p className="mt-1 text-sm text-stone-500">{formatDate(appointment.data)}</p>
-                  <p className="text-xs text-stone-400">{appointment.modalidade || profile?.atendimento || 'Modalidade nao informada'}</p>
-                </div>
-              ))}
+              <div>
+                <label className="label">Paciente</label>
+                <input className="input-field" value={appointmentForm.pacienteNome} onChange={(e) => setAppointmentForm((current) => ({ ...current, pacienteNome: e.target.value }))} placeholder="Paciente anonimo" />
+              </div>
+              <div>
+                <label className="label">Data e hora</label>
+                <input type="datetime-local" className="input-field" value={appointmentForm.data} onChange={(e) => setAppointmentForm((current) => ({ ...current, data: e.target.value }))} required />
+              </div>
+              <div>
+                <label className="label">Modalidade</label>
+                <select className="input-field" value={appointmentForm.modalidade} onChange={(e) => setAppointmentForm((current) => ({ ...current, modalidade: e.target.value }))}>
+                  <option>Online</option>
+                  <option>Presencial</option>
+                  <option>Online e presencial</option>
+                </select>
+              </div>
+              <div>
+                <label className="label">Status</label>
+                <select className="input-field" value={appointmentForm.status} onChange={(e) => setAppointmentForm((current) => ({ ...current, status: e.target.value }))}>
+                  <option value="agendada">Agendada</option>
+                  <option value="confirmada">Confirmada</option>
+                  <option value="concluida">Concluida</option>
+                  <option value="cancelada">Cancelada</option>
+                </select>
+              </div>
+              <div>
+                <label className="label">Observacoes</label>
+                <textarea className="input-field" rows={3} value={appointmentForm.observacoes} onChange={(e) => setAppointmentForm((current) => ({ ...current, observacoes: e.target.value }))} />
+              </div>
             </div>
-          ) : (
-            <EmptyState icon="calendar" title="Agenda vazia" description="Nenhum atendimento real foi encontrado em appointments para este profissional." />
-          )}
+            <div className="mt-4 flex gap-2">
+              {appointmentForm.id && <button type="button" onClick={resetAppointmentForm} className="btn-secondary flex-1">Cancelar</button>}
+              <button type="submit" disabled={savingAppointment} className="btn-primary flex-1 gap-2"><Icon name="calendar" />{savingAppointment ? 'Salvando...' : appointmentForm.id ? 'Atualizar' : 'Criar'}</button>
+            </div>
+          </form>
+        </div>
+
+        <div className="space-y-4">
+          <div className="card overflow-hidden p-5">
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="font-sans text-base font-semibold text-stone-950">Semana</h2>
+                <p className="text-sm text-stone-500">Clique em um horario livre para preparar um novo atendimento.</p>
+              </div>
+              <span className="badge border border-stone-200 bg-stone-50 text-stone-600">{upcoming.length} eventos ativos</span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <div className="min-w-[860px]">
+                <div className="grid grid-cols-[72px_repeat(7,minmax(104px,1fr))] border-b border-stone-200 text-xs font-medium text-stone-500">
+                  <div className="px-2 py-2">Hora</div>
+                  {scheduleDays.map((day) => (
+                    <div key={day.toISOString()} className="px-2 py-2 text-center">
+                      <p className="font-semibold text-stone-800">{new Intl.DateTimeFormat('pt-BR', { weekday: 'short' }).format(day)}</p>
+                      <p>{new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' }).format(day)}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {scheduleHours.map((hour) => (
+                  <div key={hour} className="grid grid-cols-[72px_repeat(7,minmax(104px,1fr))] border-b border-stone-100 last:border-b-0">
+                    <div className="flex items-center px-2 py-2 text-xs font-semibold text-stone-500">{hour}</div>
+                    {scheduleDays.map((day) => {
+                      const key = slotKey(day, hour)
+                      const appointment = appointmentBySlot.get(key)
+                      const selected = appointmentForm.data === key
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => selectSlot(day, hour)}
+                          className={`m-1 min-h-16 rounded-lg border px-2 py-2 text-left text-xs transition-colors duration-150 ${
+                            appointment
+                              ? 'border-brand-200 bg-brand-50 text-brand-800 hover:border-brand-400'
+                              : selected
+                                ? 'border-cyan-300 bg-cyan-50 text-cyan-800'
+                                : 'border-stone-200 bg-stone-50/70 text-stone-500 hover:border-brand-200 hover:bg-brand-50'
+                          }`}
+                        >
+                          {appointment ? (
+                            <>
+                              <span className="block truncate font-semibold">{appointment.pacienteNome || 'Paciente anonimo'}</span>
+                              <span className="mt-1 block truncate">{appointment.status || 'agendada'}</span>
+                            </>
+                          ) : (
+                            <span className="flex h-full items-center justify-center text-stone-400">Livre</span>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="card p-5">
+            <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Eventos ativos</h2>
+            {upcoming.length ? (
+              <div className="grid gap-3 lg:grid-cols-2">
+                {upcoming.map((appointment) => (
+                  <div key={appointment.id} className="rounded-lg border border-stone-200 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-medium text-stone-800">{appointment.pacienteNome || 'Paciente anonimo'}</p>
+                      <span className="badge border border-stone-200 bg-stone-50 text-stone-600">{appointment.status || 'agendada'}</span>
+                    </div>
+                    <p className="mt-1 text-sm text-stone-500">{formatDate(appointment.data)}</p>
+                    <p className="text-xs text-stone-400">{appointment.modalidade || profile?.atendimento || 'Modalidade nao informada'}</p>
+                    {appointment.observacoes && <p className="mt-2 text-xs text-stone-500">{appointment.observacoes}</p>}
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button onClick={() => editAppointment(appointment)} className="btn-secondary px-3 py-2 text-xs">Editar</button>
+                      <button onClick={() => removeAppointment(appointment)} disabled={savingAppointment} className="btn-secondary px-3 py-2 text-xs text-red-600">Excluir</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyState icon="calendar" title="Agenda vazia" description="Selecione um horario livre na grade para criar o primeiro evento." />
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -835,6 +1256,10 @@ function StatsPage({ data, metrics, user }) {
   }))
   const requestData = REQUEST_STATUS.map((status) => ({ label: status, value: data.requests.filter((item) => (item.status || 'nova') === status).length }))
   const weeklyResponses = [{ label: 'Respostas registradas', value: metrics.answeredMessages }]
+  const accessData = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'].map((label, day) => ({
+    label,
+    value: data.profileViews.filter((view) => toDate(view.criadaEm)?.getDay() === day).length,
+  }))
 
   return (
     <div>
@@ -843,12 +1268,16 @@ function StatsPage({ data, metrics, user }) {
         <StatCard label="Solicitacoes recebidas" value={data.requests.length} icon="inbox" />
         <StatCard label="Avaliacoes recebidas" value={data.reviews.length} icon="star" />
         <StatCard label="Novos pacientes" value={metrics.helpedPatients} icon="users" />
-        <StatCard label="Respostas por semana" value={metrics.answeredMessages} icon="message" />
+        <StatCard label="Acessos ao perfil" value={metrics.profileViews} icon="eye" />
       </section>
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-2">
         <div className="card p-5">
           <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Solicitacoes por status</h2>
           <SmallBarChart data={requestData} emptyText="Nenhuma solicitacao real foi registrada." />
+        </div>
+        <div className="card p-5">
+          <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Acessos por dia da semana</h2>
+          <SmallBarChart data={accessData} emptyText="Acessos ao perfil ainda nao foram registrados." />
         </div>
         <div className="card p-5">
           <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Categorias atendidas</h2>
@@ -867,22 +1296,50 @@ function SettingsPage({ user, onNavigate }) {
   const [email, setEmail] = useState(user?.email || '')
   const [password, setPassword] = useState('')
   const [message, setMessage] = useState('')
+  const [loadingAction, setLoadingAction] = useState('')
 
   const changeEmail = async () => {
-    await updateEmail(user, email)
-    setMessage('E-mail atualizado.')
+    setLoadingAction('email')
+    setMessage('')
+    try {
+      await updateEmail(user, email)
+      setMessage('E-mail atualizado.')
+    } catch (error) {
+      console.error('Erro ao alterar e-mail:', error)
+      setMessage(error.message || 'Nao foi possivel alterar o e-mail.')
+    } finally {
+      setLoadingAction('')
+    }
   }
 
   const changePassword = async () => {
-    await updatePassword(user, password)
-    setPassword('')
-    setMessage('Senha atualizada.')
+    setLoadingAction('password')
+    setMessage('')
+    try {
+      await updatePassword(user, password)
+      setPassword('')
+      setMessage('Senha atualizada.')
+    } catch (error) {
+      console.error('Erro ao alterar senha:', error)
+      setMessage(error.message || 'Nao foi possivel alterar a senha.')
+    } finally {
+      setLoadingAction('')
+    }
   }
 
   const deleteAccount = async () => {
     if (!window.confirm('Excluir sua conta permanentemente?')) return
-    await deleteDoc(doc(db, 'users', user.uid))
-    await deleteUser(user)
+    setLoadingAction('delete')
+    setMessage('')
+    try {
+      await deleteDoc(doc(db, 'users', user.uid))
+      await deleteUser(user)
+    } catch (error) {
+      console.error('Erro ao excluir conta:', error)
+      setMessage(error.message || 'Nao foi possivel excluir a conta.')
+    } finally {
+      setLoadingAction('')
+    }
   }
 
   return (
@@ -893,13 +1350,13 @@ function SettingsPage({ user, onNavigate }) {
           <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Dados da conta</h2>
           <label className="label">E-mail</label>
           <input className="input-field" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <button onClick={changeEmail} className="btn-primary mt-3 gap-2"><Icon name="save" />Alterar e-mail</button>
+          <button onClick={changeEmail} disabled={loadingAction === 'email'} className="btn-primary mt-3 gap-2"><Icon name="save" />{loadingAction === 'email' ? 'Salvando...' : 'Alterar e-mail'}</button>
         </div>
         <div className="card p-5">
           <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Seguranca</h2>
           <label className="label">Nova senha</label>
           <input type="password" className="input-field" value={password} onChange={(e) => setPassword(e.target.value)} />
-          <button onClick={changePassword} disabled={password.length < 6} className="btn-primary mt-3 gap-2"><Icon name="lock" />Alterar senha</button>
+          <button onClick={changePassword} disabled={password.length < 6 || loadingAction === 'password'} className="btn-primary mt-3 gap-2"><Icon name="lock" />{loadingAction === 'password' ? 'Salvando...' : 'Alterar senha'}</button>
         </div>
         <div className="card p-5">
           <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Preferencias e privacidade</h2>
@@ -909,7 +1366,7 @@ function SettingsPage({ user, onNavigate }) {
           <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Acoes da conta</h2>
           <div className="flex flex-wrap gap-2">
             <button onClick={() => onNavigate('logout')} className="btn-secondary gap-2"><Icon name="logout" />Logout</button>
-            <button onClick={deleteAccount} className="btn-secondary gap-2 text-red-600"><Icon name="trash" />Excluir conta</button>
+            <button onClick={deleteAccount} disabled={loadingAction === 'delete'} className="btn-secondary gap-2 text-red-600"><Icon name="trash" />{loadingAction === 'delete' ? 'Excluindo...' : 'Excluir conta'}</button>
           </div>
         </div>
       </div>

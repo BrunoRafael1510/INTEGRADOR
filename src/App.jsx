@@ -24,6 +24,7 @@ function PrivateRoute({ user, children }) {
 
 export default function App() {
   const [user, setUser] = useState(undefined)
+  const [theme, setTheme] = useState(() => localStorage.getItem('safetalk-theme') || 'light')
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
@@ -31,6 +32,15 @@ export default function App() {
     })
     return unsubscribe
   }, [])
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark')
+    localStorage.setItem('safetalk-theme', theme)
+  }, [theme])
+
+  const toggleTheme = () => {
+    setTheme((current) => current === 'dark' ? 'light' : 'dark')
+  }
 
   return (
     <BrowserRouter>
@@ -45,7 +55,7 @@ export default function App() {
 
         <Route path="/dashboard/*" element={
           <PrivateRoute user={user}>
-            <Dashboard user={user} />
+            <Dashboard user={user} theme={theme} onThemeToggle={toggleTheme} />
           </PrivateRoute>
         } />
 

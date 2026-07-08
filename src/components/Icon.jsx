@@ -30,6 +30,7 @@ import {
   Shield,
   Sparkles,
   Star,
+  Sun,
   TrendingUp,
   Trash2,
   User,
@@ -38,6 +39,7 @@ import {
   X,
   Zap,
   BarChart3,
+  Moon,
 } from 'lucide-react'
 
 const icons = {
@@ -58,6 +60,8 @@ const icons = {
   menu: Menu,
   logout: LogOut,
   star: Star,
+  sun: Sun,
+  moon: Moon,
   plus: Plus,
   filter: Filter,
   user: User,

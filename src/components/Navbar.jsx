@@ -3,12 +3,16 @@ import { useNavigate } from 'react-router-dom'
 import { auth } from '../services/firebase'
 import Icon from './Icon'
 
-export default function Navbar({ user, onMenuToggle }) {
+export default function Navbar({ user, onMenuToggle, theme = 'light', onThemeToggle }) {
   const navigate = useNavigate()
 
   const handleLogout = async () => {
-    await signOut(auth)
-    navigate('/')
+    try {
+      await signOut(auth)
+      navigate('/')
+    } catch (error) {
+      console.error('Erro ao sair:', error)
+    }
   }
 
   const iniciais = user?.displayName
@@ -33,6 +37,14 @@ export default function Navbar({ user, onMenuToggle }) {
       </span>
 
       <div className="flex items-center gap-2">
+        <button
+          onClick={onThemeToggle}
+          className="text-stone-500 hover:text-brand-700 p-2 rounded-lg hover:bg-brand-50 transition-colors duration-150"
+          title={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
+          aria-label={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
+        >
+          <Icon name={theme === 'dark' ? 'sun' : 'moon'} className="w-4 h-4" />
+        </button>
         <div className="w-8 h-8 rounded-lg bg-brand-600 border border-brand-700/10 text-stone-50 font-medium text-xs flex items-center justify-center">
           {iniciais}
         </div>
