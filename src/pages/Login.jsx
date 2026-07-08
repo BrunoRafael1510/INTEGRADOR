@@ -3,8 +3,9 @@ import { useNavigate, Link } from 'react-router-dom'
 import { signInWithEmailAndPassword } from 'firebase/auth'
 import { auth } from '../services/firebase'
 import Icon from '../components/Icon'
+import ThemeToggle from '../components/ThemeToggle'
 
-export default function Login() {
+export default function Login({ theme = 'light', onThemeToggle }) {
   const navigate = useNavigate()
   const [form, setForm] = useState({ email: '', senha: '' })
   const [erro, setErro] = useState('')
@@ -37,7 +38,10 @@ export default function Login() {
   }
 
   return (
-    <div className="app-bg min-h-screen flex items-center justify-center px-4 py-12">
+    <div className="app-bg login-page min-h-screen flex items-center justify-center px-4 py-12">
+      <div className="fixed right-4 top-4 z-20">
+        <ThemeToggle theme={theme} onThemeToggle={onThemeToggle} />
+      </div>
       <div className="w-full max-w-sm animate-slide-up">
         <div className="text-center mb-8">
           <Link to="/" className="font-sans text-3xl font-bold text-stone-900 hover:text-brand-700 transition-colors duration-150">
@@ -46,8 +50,8 @@ export default function Login() {
           <p className="text-slate-500 mt-2 text-sm">Entre para continuar seu espaco de apoio.</p>
         </div>
 
-        <div className="card p-8">
-          <div className="w-10 h-10 rounded-lg bg-brand-50 text-brand-700 border border-brand-100 flex items-center justify-center mb-5">
+        <div className="card login-card p-8">
+          <div className="login-lock w-10 h-10 rounded-lg bg-brand-50 text-brand-700 border border-brand-100 flex items-center justify-center mb-5">
             <Icon name="lock" className="w-5 h-5" />
           </div>
           <h1 className="font-sans text-2xl font-bold text-stone-900 mb-6">Entrar</h1>

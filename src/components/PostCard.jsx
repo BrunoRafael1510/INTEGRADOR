@@ -45,6 +45,7 @@ export default function PostCard({ post, currentUser }) {
   const respostas = post.respostas || []
   const curtidas = post.curtidas || []
   const jaCurtiu = curtidas.includes(currentUser?.uid)
+  const isOwnPost = Boolean(currentUser?.uid && post.autorUid === currentUser.uid)
   const categoria = normalizeCategory(post.categoria)
 
   const handleCurtir = async () => {
@@ -68,6 +69,10 @@ export default function PostCard({ post, currentUser }) {
   const handleEnviarResposta = async () => {
     const texto = aiSuggestion || resposta
     if (!texto.trim()) return
+    if (isOwnPost) {
+      setErroReply('Voce nao pode responder seu proprio desabafo.')
+      return
+    }
     setLoadingReply(true)
     setErroReply('')
     try {
@@ -102,7 +107,7 @@ export default function PostCard({ post, currentUser }) {
   const catColor = CATEGORY_COLORS[categoria] || 'bg-stone-100 text-stone-600 border-stone-200'
 
   return (
-    <article className="card p-5 animate-fade-in">
+    <article className="card community-post p-5 animate-fade-in">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-brand-50 border border-brand-100 flex items-center justify-center text-brand-700">
@@ -114,7 +119,7 @@ export default function PostCard({ post, currentUser }) {
           </div>
         </div>
         {categoria && (
-          <span className={`badge border ${catColor}`}>
+          <span className={`badge community-badge border ${catColor}`}>
             {categoria}
           </span>
         )}
@@ -135,13 +140,20 @@ export default function PostCard({ post, currentUser }) {
           <span>{curtidas.length}</span>
         </button>
 
-        <button
-          onClick={() => setShowReply(!showReply)}
-          className="flex items-center gap-1.5 text-xs text-stone-400 hover:text-stone-600 transition-colors"
-        >
-          <Icon name="message" className="w-4 h-4" />
-          <span>{respostas.length} respostas</span>
-        </button>
+        {isOwnPost ? (
+          <span className="flex items-center gap-1.5 text-xs text-stone-400">
+            <Icon name="message" className="w-4 h-4" />
+            <span>{respostas.length} respostas</span>
+          </span>
+        ) : (
+          <button
+            onClick={() => setShowReply(!showReply)}
+            className="flex items-center gap-1.5 text-xs text-stone-400 hover:text-stone-600 transition-colors"
+          >
+            <Icon name="message" className="w-4 h-4" />
+            <span>{respostas.length} respostas</span>
+          </button>
+        )}
 
         <button className="ml-auto text-xs text-stone-300 hover:text-red-500 transition-colors" title="Denunciar" aria-label="Denunciar">
           <Icon name="flag" className="w-4 h-4" />
@@ -155,7 +167,7 @@ export default function PostCard({ post, currentUser }) {
               <div className="w-6 h-6 rounded-lg bg-brand-50 border border-brand-100 text-brand-700 flex items-center justify-center flex-shrink-0 mt-0.5">
                 <Icon name="message" className="w-3.5 h-3.5" />
               </div>
-              <div className="flex-1 bg-stone-50/70 border border-stone-200 rounded-lg px-3 py-2">
+              <div className="community-reply flex-1 bg-stone-50/70 border border-stone-200 rounded-lg px-3 py-2">
                 <p className="text-xs font-medium text-stone-500 mb-0.5">{r.autorNome}</p>
                 <p className="text-sm text-stone-700 leading-relaxed">{r.texto}</p>
               </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { collection, query, where, orderBy, onSnapshot, doc, deleteDoc } from 'firebase/firestore'
+import { collection, query, where, onSnapshot, doc, deleteDoc } from 'firebase/firestore'
 import { db } from '../services/firebase'
 import PostCard from '../components/PostCard'
 import Icon from '../components/Icon'
@@ -8,20 +8,42 @@ export default function MyPosts({ user }) {
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
   const [deletando, setDeletando] = useState(null)
+  const [erro, setErro] = useState('')
 
   useEffect(() => {
-    if (!user?.uid) return
+    if (!user?.uid) {
+      setPosts([])
+      setLoading(false)
+      return undefined
+    }
+
+    setLoading(true)
+    setErro('')
     const q = query(
       collection(db, 'posts'),
-      where('autorUid', '==', user.uid),
-      orderBy('criadoEm', 'desc')
+      where('autorUid', '==', user.uid)
     )
-    const unsub = onSnapshot(q, (snap) => {
-      setPosts(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-      setLoading(false)
-    })
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const data = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => {
+            const dateA = a.criadoEm?.toDate ? a.criadoEm.toDate().getTime() : new Date(a.criadoEm || 0).getTime()
+            const dateB = b.criadoEm?.toDate ? b.criadoEm.toDate().getTime() : new Date(b.criadoEm || 0).getTime()
+            return dateB - dateA
+          })
+        setPosts(data)
+        setLoading(false)
+      },
+      (error) => {
+        console.error('Erro ao carregar meus desabafos:', error)
+        setErro(error.message || 'Nao foi possivel carregar seus desabafos.')
+        setLoading(false)
+      }
+    )
     return unsub
-  }, [user])
+  }, [user?.uid])
 
   const handleDeletar = async (id) => {
     if (!window.confirm('Deseja remover este desabafo?')) return
@@ -44,6 +66,12 @@ export default function MyPosts({ user }) {
         <h1 className="font-serif text-2xl text-stone-900 mb-1">Meus desabafos</h1>
         <p className="text-stone-500 text-sm">Tudo que voce compartilhou, em um so lugar.</p>
       </div>
+
+      {erro && (
+        <div className="mb-4 rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+          {erro}
+        </div>
+      )}
 
       {!loading && posts.length > 0 && (
         <div className="grid grid-cols-3 gap-3 mb-6">

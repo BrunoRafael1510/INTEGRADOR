@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import Icon from '../components/Icon'
+import ThemeToggle from '../components/ThemeToggle'
 
 const features = [
   {
@@ -29,7 +30,7 @@ const categories = [
   'Solidao', 'Luto', 'Autoestima', 'Outros',
 ]
 
-export default function Landing({ user }) {
+export default function Landing({ user, theme = 'light', onThemeToggle }) {
   const navigate = useNavigate()
 
   return (
@@ -38,6 +39,7 @@ export default function Landing({ user }) {
         <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
           <span className="font-sans text-2xl font-bold text-stone-900">SafeTalk</span>
           <div className="flex items-center gap-3">
+            <ThemeToggle theme={theme} onThemeToggle={onThemeToggle} compact />
             {user ? (
               <button onClick={() => navigate('/dashboard')} className="btn-primary">
                 Ir para o app

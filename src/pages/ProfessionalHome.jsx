@@ -160,21 +160,6 @@ const STAT_TONES = {
   },
 }
 
-function MiniSparkline({ tone }) {
-  const heights = ['35%', '58%', '45%', '72%', '54%', '86%', '68%']
-  return (
-    <div className="flex h-8 items-end gap-1">
-      {heights.map((height, index) => (
-        <span
-          key={height + index}
-          className="w-1.5 rounded-full bg-brand-500"
-          style={{ height, opacity: index % 2 ? 0.72 : 1 }}
-        />
-      ))}
-    </div>
-  )
-}
-
 function StatCard({ label, value, icon, hint }) {
   const tone = STAT_TONES[icon] || {
     icon: 'border-brand-100 bg-brand-50 text-brand-700',
@@ -185,19 +170,13 @@ function StatCard({ label, value, icon, hint }) {
 
   return (
     <div className="relative overflow-hidden rounded-lg border border-stone-200 bg-stone-50/90 p-4 shadow-soft transition-colors duration-150">
-      <div className="relative mb-4 flex items-center justify-between gap-3">
+      <div className="relative mb-4 flex items-center gap-3">
         <span className={`rounded-lg border p-2 shadow-sm ${tone.icon}`}>
           <Icon name={icon} className="h-4 w-4" />
         </span>
-        <span className={`rounded-full border px-2 py-1 text-[11px] font-semibold ${tone.change}`}>+12%</span>
       </div>
-      <div className="relative flex items-end justify-between gap-3">
-        <div>
-          <p className="text-3xl font-bold tracking-normal text-stone-900">{value}</p>
-          <p className="mt-1 text-sm font-medium text-slate-500">{label}</p>
-        </div>
-        <MiniSparkline tone={tone} />
-      </div>
+      <p className="text-3xl font-bold tracking-normal text-stone-900">{value}</p>
+      <p className="mt-1 text-sm font-medium text-slate-500">{label}</p>
       {hint && <p className="relative mt-3 text-xs text-slate-400">{hint}</p>}
     </div>
   )
@@ -374,7 +353,7 @@ function OverviewPage({ user, profile, data, metrics, onNavigate }) {
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[1.1fr_.9fr]">
-        <div className="card p-5">
+        <div className="card attention-panel p-5">
           <div className="mb-5 flex items-center justify-between gap-4">
             <div>
               <h2 className="font-sans text-base font-semibold text-stone-950">Fila de atencao</h2>
@@ -384,16 +363,16 @@ function OverviewPage({ user, profile, data, metrics, onNavigate }) {
           </div>
 
           <div className="grid gap-3 md:grid-cols-2">
-            <div className="rounded-lg border border-stone-200 bg-stone-50/70 p-4">
-              <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-stone-900">
+            <div className="attention-item rounded-lg border border-stone-200 bg-stone-50/70 p-4">
+              <div className="attention-title mb-3 flex items-center gap-2 text-sm font-semibold text-stone-900">
                 <Icon name="calendar" />
                 Proximo horario
               </div>
               <p className="text-sm text-stone-600">{nextAppointment ? nextAppointment.pacienteNome || 'Paciente anonimo' : 'Nada agendado'}</p>
               <p className="mt-1 text-xs text-stone-400">{nextAppointment ? formatDate(nextAppointment.data) : 'Selecione horarios na agenda.'}</p>
             </div>
-            <div className="rounded-lg border border-stone-200 bg-stone-50/70 p-4">
-              <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-stone-900">
+            <div className="attention-item rounded-lg border border-stone-200 bg-stone-50/70 p-4">
+              <div className="attention-title mb-3 flex items-center gap-2 text-sm font-semibold text-stone-900">
                 <Icon name="inbox" />
                 Pedido mais recente
               </div>
@@ -403,15 +382,15 @@ function OverviewPage({ user, profile, data, metrics, onNavigate }) {
           </div>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-lg border border-stone-200 p-3">
+            <div className="attention-metric rounded-lg border border-stone-200 p-3">
               <p className="text-xs text-stone-400">Taxa resposta</p>
               <p className="mt-1 text-xl font-bold text-stone-900">{metrics.responseRate}</p>
             </div>
-            <div className="rounded-lg border border-stone-200 p-3">
+            <div className="attention-metric rounded-lg border border-stone-200 p-3">
               <p className="text-xs text-stone-400">Tempo medio</p>
               <p className="mt-1 text-xl font-bold text-stone-900">{metrics.averageResponseTime}</p>
             </div>
-            <div className="rounded-lg border border-stone-200 p-3">
+            <div className="attention-metric rounded-lg border border-stone-200 p-3">
               <p className="text-xs text-stone-400">Pacientes ajudados</p>
               <p className="mt-1 text-xl font-bold text-stone-900">{metrics.helpedPatients}</p>
             </div>
@@ -448,51 +427,107 @@ function OverviewPage({ user, profile, data, metrics, onNavigate }) {
 function ProfilePreview({ profile }) {
   const displayName = profile?.nome || 'Nome profissional nao informado'
   const areas = Array.isArray(profile?.areas) ? profile.areas : []
+  const shouldShowValue = profile?.preferencias?.mostrarValorConsulta !== false
+  const details = [
+    { label: 'Modalidade', value: profile?.atendimento || 'Nao informada', icon: 'video' },
+    { label: 'Valor', value: shouldShowValue ? formatMoney(profile?.valorConsulta) : 'Valor privado', icon: 'file' },
+    { label: 'Disponibilidade', value: profile?.disponibilidade || 'Nao informada', icon: 'calendar' },
+  ]
 
   return (
-    <div className="mt-5 overflow-hidden rounded-lg border border-stone-200 bg-stone-50/90 p-4 shadow-soft">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-        <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-brand-600 text-lg font-semibold text-stone-50 ring-4 ring-stone-100">
-          {profile?.fotoUrl ? <img src={profile.fotoUrl} alt="" className="h-full w-full object-cover" /> : displayName.split(' ').map((item) => item[0]).slice(0, 2).join('').toUpperCase()}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h3 className="font-semibold text-slate-950">{displayName}</h3>
-              <p className="text-sm font-medium text-brand-700">{profile?.especialidade || 'Especialidade nao informada'}</p>
-              <p className="mt-1 text-xs text-slate-500">
-                {[profile?.crp, profile?.cidade && profile?.estado ? `${profile.cidade}, ${profile.estado}` : null].filter(Boolean).join(' - ') || 'Registro e localizacao pendentes'}
-              </p>
-            </div>
-            <span className={`badge border ${profile?.verificado ? 'border-sage-100 bg-sage-50 text-sage-700' : 'border-amber-100 bg-amber-50 text-amber-700'}`}>
-              <Icon name={profile?.verificado ? 'check' : 'clock'} className="h-3 w-3" />
-              {profile?.verificado ? 'Verificado' : 'Pendente'}
-            </span>
+    <div className="profile-preview mt-5 overflow-hidden rounded-lg border border-stone-200 bg-stone-50/90 shadow-soft">
+      <div className="profile-preview-header p-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <div className="mx-auto flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-brand-600 text-lg font-semibold text-stone-50 ring-4 ring-stone-100 sm:mx-0">
+            {profile?.fotoUrl ? <img src={profile.fotoUrl} alt="" className="h-full w-full object-cover" /> : displayName.split(' ').map((item) => item[0]).slice(0, 2).join('').toUpperCase()}
           </div>
-
-          <div className="mt-4 grid gap-2 sm:grid-cols-3">
-            <div className="rounded-lg border border-stone-200 bg-stone-100/50 p-3">
-              <p className="text-xs text-slate-400">Modalidade</p>
-              <p className="text-sm font-semibold text-slate-800">{profile?.atendimento || 'Nao informada'}</p>
-            </div>
-            <div className="rounded-lg border border-stone-200 bg-stone-100/50 p-3">
-              <p className="text-xs text-slate-400">Valor</p>
-              <p className="text-sm font-semibold text-slate-800">{formatMoney(profile?.valorConsulta)}</p>
-            </div>
-            <div className="rounded-lg border border-stone-200 bg-stone-100/50 p-3">
-              <p className="text-xs text-slate-400">Disponibilidade</p>
-              <p className="text-sm font-semibold text-slate-800">{profile?.disponibilidade || 'Nao informada'}</p>
+          <div className="min-w-0 flex-1 text-center sm:text-left">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <h3 className="truncate font-semibold text-slate-950">{displayName}</h3>
+                <p className="text-sm font-medium text-brand-700">{profile?.especialidade || 'Especialidade nao informada'}</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  {[profile?.crp, profile?.cidade && profile?.estado ? `${profile.cidade}, ${profile.estado}` : null].filter(Boolean).join(' - ') || 'Registro e localizacao pendentes'}
+                </p>
+              </div>
+              <span className={`badge mx-auto shrink-0 border sm:mx-0 ${profile?.verificado ? 'border-sage-100 bg-sage-50 text-sage-700' : 'border-amber-100 bg-amber-50 text-amber-700'}`}>
+                <Icon name={profile?.verificado ? 'check' : 'clock'} className="h-3 w-3" />
+                {profile?.verificado ? 'Verificado' : 'Pendente'}
+              </span>
             </div>
           </div>
-
-          {profile?.descricao && <p className="mt-4 text-sm leading-relaxed text-slate-600">{profile.descricao}</p>}
-          {areas.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {areas.map((area) => <span key={area} className="badge border border-stone-200 bg-stone-100/70 text-stone-600">{area}</span>)}
-            </div>
-          )}
         </div>
       </div>
+
+      <div className="space-y-4 border-t border-stone-200 p-4">
+        <div className="grid gap-2">
+          {details.map((item) => (
+            <div key={item.label} className="profile-preview-row flex items-start gap-3 rounded-lg border border-stone-200 bg-stone-100/50 p-3">
+              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
+                <Icon name={item.icon} className="h-4 w-4" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-xs text-slate-400">{item.label}</span>
+                <span className="block break-words text-sm font-semibold text-slate-800">{item.value}</span>
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {profile?.descricao && (
+          <p className="line-clamp-4 text-sm leading-relaxed text-slate-600">{profile.descricao}</p>
+        )}
+
+        {areas.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {areas.slice(0, 6).map((area) => <span key={area} className="profile-preview-chip badge border border-stone-200 bg-stone-100/70 text-stone-600">{area}</span>)}
+            {areas.length > 6 && <span className="profile-preview-chip badge border border-stone-200 bg-stone-100/70 text-stone-600">+{areas.length - 6}</span>}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function ProfileProgressCard({ completion, onNavigate }) {
+  const isComplete = completion >= 100
+
+  if (isComplete) {
+    return (
+      <div className="profile-complete-card overflow-hidden rounded-lg border border-sage-100 bg-sage-50 p-5">
+        <div className="flex items-start gap-3">
+          <span className="profile-complete-icon flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-sage-600 text-white">
+            <Icon name="award" className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <p className="font-sans text-base font-semibold text-stone-950">Perfil completo</p>
+            <p className="mt-1 text-sm leading-relaxed text-stone-600">
+              Seu perfil ja pode aparecer bem apresentado para pacientes. Agora voce pode revisar a privacidade ou visualizar como ele fica no diretorio.
+            </p>
+          </div>
+        </div>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          <button type="button" onClick={() => onNavigate('professionals')} className="btn-primary justify-center gap-2">
+            <Icon name="eye" />Ver preview
+          </button>
+          <button type="button" onClick={() => onNavigate('settings')} className="btn-secondary justify-center gap-2">
+            <Icon name="lock" />Privacidade
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="card p-5">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="font-sans text-base font-semibold text-stone-950">Progresso do perfil</h2>
+        <span className="text-sm font-semibold text-brand-700">{completion}%</span>
+      </div>
+      <ProgressBar value={completion} />
+      <p className="mt-3 text-xs leading-relaxed text-stone-500">
+        Complete os campos principais para liberar um perfil mais confiavel no diretorio.
+      </p>
     </div>
   )
 }
@@ -646,13 +681,7 @@ function ProfilePage({ user, profile, onNavigate }) {
         </form>
 
         <aside className="space-y-4">
-          <div className="card p-5">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="font-sans text-base font-semibold text-stone-950">Progresso do perfil</h2>
-              <span className="text-sm font-semibold text-brand-700">{completion}%</span>
-            </div>
-            <ProgressBar value={completion} />
-          </div>
+          <ProfileProgressCard completion={completion} onNavigate={onNavigate} />
           <div className="card p-5">
             <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Preview do paciente</h2>
             <ProfilePreview profile={draft} />
@@ -667,6 +696,9 @@ function RequestsPage({ requests }) {
   const [selected, setSelected] = useState(null)
   const [busyId, setBusyId] = useState('')
   const [message, setMessage] = useState('')
+  const activeRequests = requests.filter((request) => ['nova', 'pendente'].includes(request.status || 'nova'))
+  const historyRequests = requests.filter((request) => !['nova', 'pendente'].includes(request.status || 'nova'))
+  const statusClass = (status) => `request-status request-status-${status || 'nova'}`
 
   const updateStatus = async (request, status) => {
     setBusyId(`${request.id}-${status}`)
@@ -703,15 +735,15 @@ function RequestsPage({ requests }) {
         ))}
       </section>
 
-      {requests.length ? (
+      {activeRequests.length ? (
         <div className="space-y-3">
-          {requests.map((request) => (
-            <article key={request.id} className="card p-5">
+          {activeRequests.map((request) => (
+            <article key={request.id} className="card request-card request-card-active p-5">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <h2 className="font-medium text-stone-950">{request.pacienteNome || 'Paciente anonimo'}</h2>
-                    <span className="badge border border-stone-200 bg-stone-50 text-stone-600">{request.status || 'nova'}</span>
+                    <span className={`badge border border-stone-200 bg-stone-50 text-stone-600 ${statusClass(request.status)}`}>{request.status || 'nova'}</span>
                   </div>
                   <p className="mt-2 text-sm leading-relaxed text-stone-600">{request.motivo || 'Sem motivo informado'}</p>
                   <div className="mt-3 flex flex-wrap gap-2 text-xs text-stone-400">
@@ -731,12 +763,41 @@ function RequestsPage({ requests }) {
           ))}
         </div>
       ) : (
-        <EmptyState icon="inbox" title="Nenhuma solicitacao recebida" description="Quando um paciente usar o diretorio para solicitar contato, o documento sera gravado em requests e aparecera aqui." />
+        <EmptyState icon="inbox" title="Nenhuma solicitacao pendente" description="Ao aceitar, recusar ou finalizar, o pedido sai desta fila e vai para o historico." />
+      )}
+
+      {historyRequests.length > 0 && (
+        <section className="mt-6">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-sans text-base font-semibold text-stone-950">Historico</h2>
+              <p className="text-sm text-stone-500">Solicitacoes ja respondidas ficam aqui para consulta.</p>
+            </div>
+            <span className="badge request-count border border-stone-200 bg-stone-50 text-stone-600">{historyRequests.length}</span>
+          </div>
+          <div className="space-y-3">
+            {historyRequests.map((request) => (
+              <article key={request.id} className="request-card request-card-history rounded-lg border border-stone-200 bg-stone-50/70 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-sm font-medium text-stone-900">{request.pacienteNome || 'Paciente anonimo'}</h3>
+                      <span className={`badge border border-stone-200 bg-stone-50 text-stone-600 ${statusClass(request.status)}`}>{request.status || 'nova'}</span>
+                    </div>
+                    <p className="mt-1 line-clamp-2 text-sm text-stone-500">{request.motivo || 'Sem motivo informado'}</p>
+                    <p className="mt-2 text-xs text-stone-400">{formatDate(request.atualizadaEm || request.respondidaEm || request.finalizadaEm || request.criadaEm)}</p>
+                  </div>
+                  <button onClick={() => setSelected(request)} className="btn-secondary px-3 py-2 text-xs">Detalhes</button>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
       )}
 
       {selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-          <div className="w-full max-w-lg rounded-lg bg-stone-50 p-6 shadow-card">
+          <div className="request-modal w-full max-w-lg rounded-lg bg-stone-50 p-6 shadow-card">
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
                 <h3 className="font-serif text-xl text-stone-950">Detalhes da solicitacao</h3>
@@ -747,7 +808,7 @@ function RequestsPage({ requests }) {
             <dl className="space-y-3 text-sm">
               <div><dt className="font-medium text-stone-700">Motivo</dt><dd className="text-stone-500">{selected.motivo || 'Nao informado'}</dd></div>
               <div><dt className="font-medium text-stone-700">Categoria</dt><dd className="text-stone-500">{selected.categoria || 'Nao informada'}</dd></div>
-              <div><dt className="font-medium text-stone-700">Status</dt><dd className="text-stone-500">{selected.status || 'nova'}</dd></div>
+              <div><dt className="font-medium text-stone-700">Status</dt><dd className="text-stone-500"><span className={`badge border border-stone-200 bg-stone-50 text-stone-600 ${statusClass(selected.status)}`}>{selected.status || 'nova'}</span></dd></div>
               <div><dt className="font-medium text-stone-700">Criada em</dt><dd className="text-stone-500">{formatDate(selected.criadaEm)}</dd></div>
             </dl>
           </div>
@@ -793,7 +854,7 @@ function CommunityPage({ posts, savedIds, user }) {
           {message}
         </div>
       )}
-      <div className="card mb-5 grid gap-3 p-4 md:grid-cols-[1fr_auto]">
+      <div className="card community-filter mb-5 grid gap-3 p-4 md:grid-cols-[1fr_auto]">
         <div className="relative">
           <Icon name="search" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
           <input className="input-field pl-10" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Pesquisar no feed..." />
@@ -806,9 +867,9 @@ function CommunityPage({ posts, savedIds, user }) {
       {filtered.length ? (
         <div className="space-y-3">
           {filtered.map((post) => (
-            <article key={post.id} className="card p-5">
+            <article key={post.id} className="card community-post p-5">
               <div className="mb-3 flex items-center justify-between gap-3">
-                <span className="badge border border-stone-200 bg-stone-50 text-stone-600">{post.categoria || 'Sem categoria'}</span>
+                <span className="badge community-badge border border-stone-200 bg-stone-50 text-stone-600">{post.categoria || 'Sem categoria'}</span>
                 <span className="text-xs text-stone-400">{formatDate(post.criadoEm)}</span>
               </div>
               <p className="whitespace-pre-line text-sm leading-relaxed text-stone-700">{post.conteudo}</p>
@@ -836,12 +897,16 @@ function AnswerPage({ posts, user }) {
   const [sendingId, setSendingId] = useState('')
   const [message, setMessage] = useState('')
 
-  const pending = posts.filter((post) => (post.respostas?.length || 0) === 0)
+  const pending = posts.filter((post) => (post.respostas?.length || 0) === 0 && post.autorUid !== user?.uid)
   const filtered = category === 'Todas' ? pending : pending.filter((post) => post.categoria === category)
 
   const sendReply = async (post) => {
     const text = replyByPost[post.id]?.trim()
     if (!text) return
+    if (post.autorUid === user?.uid) {
+      setMessage('Voce nao pode responder seu proprio desabafo.')
+      return
+    }
     setSendingId(post.id)
     setMessage('')
     try {
@@ -1161,18 +1226,18 @@ function SchedulePage({ appointments, profile, user }) {
         </div>
 
         <div className="space-y-4">
-          <div className="card overflow-hidden p-5">
+          <div className="card schedule-board overflow-hidden p-5">
             <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="font-sans text-base font-semibold text-stone-950">Semana</h2>
                 <p className="text-sm text-stone-500">Clique em um horario livre para preparar um novo atendimento.</p>
               </div>
-              <span className="badge border border-stone-200 bg-stone-50 text-stone-600">{upcoming.length} eventos ativos</span>
+              <span className="badge schedule-count border border-stone-200 bg-stone-50 text-stone-600">{upcoming.length} eventos ativos</span>
             </div>
 
             <div className="overflow-x-auto">
               <div className="min-w-[860px]">
-                <div className="grid grid-cols-[72px_repeat(7,minmax(104px,1fr))] border-b border-stone-200 text-xs font-medium text-stone-500">
+                <div className="schedule-header grid grid-cols-[72px_repeat(7,minmax(104px,1fr))] border-b border-stone-200 text-xs font-medium text-stone-500">
                   <div className="px-2 py-2">Hora</div>
                   {scheduleDays.map((day) => (
                     <div key={day.toISOString()} className="px-2 py-2 text-center">
@@ -1183,8 +1248,8 @@ function SchedulePage({ appointments, profile, user }) {
                 </div>
 
                 {scheduleHours.map((hour) => (
-                  <div key={hour} className="grid grid-cols-[72px_repeat(7,minmax(104px,1fr))] border-b border-stone-100 last:border-b-0">
-                    <div className="flex items-center px-2 py-2 text-xs font-semibold text-stone-500">{hour}</div>
+                  <div key={hour} className="schedule-row grid grid-cols-[72px_repeat(7,minmax(104px,1fr))] border-b border-stone-100 last:border-b-0">
+                    <div className="schedule-hour flex items-center px-2 py-2 text-xs font-semibold text-stone-500">{hour}</div>
                     {scheduleDays.map((day) => {
                       const key = slotKey(day, hour)
                       const appointment = appointmentBySlot.get(key)
@@ -1194,12 +1259,12 @@ function SchedulePage({ appointments, profile, user }) {
                           key={key}
                           type="button"
                           onClick={() => selectSlot(day, hour)}
-                          className={`m-1 min-h-16 rounded-lg border px-2 py-2 text-left text-xs transition-colors duration-150 ${
+                          className={`schedule-slot m-1 min-h-16 rounded-lg border px-2 py-2 text-left text-xs transition-colors duration-150 ${
                             appointment
-                              ? 'border-brand-200 bg-brand-50 text-brand-800 hover:border-brand-400'
+                              ? 'schedule-slot-booked border-brand-200 bg-brand-50 text-brand-800 hover:border-brand-400'
                               : selected
-                                ? 'border-cyan-300 bg-cyan-50 text-cyan-800'
-                                : 'border-stone-200 bg-stone-50/70 text-stone-500 hover:border-brand-200 hover:bg-brand-50'
+                                ? 'schedule-slot-selected border-cyan-300 bg-cyan-50 text-cyan-800'
+                                : 'schedule-slot-free border-stone-200 bg-stone-50/70 text-stone-500 hover:border-brand-200 hover:bg-brand-50'
                           }`}
                         >
                           {appointment ? (
@@ -1208,7 +1273,7 @@ function SchedulePage({ appointments, profile, user }) {
                               <span className="mt-1 block truncate">{appointment.status || 'agendada'}</span>
                             </>
                           ) : (
-                            <span className="flex h-full items-center justify-center text-stone-400">Livre</span>
+                            <span className="schedule-free-label flex h-full items-center justify-center text-stone-400">Livre</span>
                           )}
                         </button>
                       )
@@ -1219,7 +1284,7 @@ function SchedulePage({ appointments, profile, user }) {
             </div>
           </div>
 
-          <div className="card p-5">
+          <div className="card schedule-events p-5">
             <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Eventos ativos</h2>
             {upcoming.length ? (
               <div className="grid gap-3 lg:grid-cols-2">
@@ -1292,36 +1357,119 @@ function StatsPage({ data, metrics, user }) {
   )
 }
 
-function SettingsPage({ user, onNavigate }) {
+function SettingsPage({ user, profile, onNavigate }) {
   const [email, setEmail] = useState(user?.email || '')
   const [password, setPassword] = useState('')
+  const [passwordConfirm, setPasswordConfirm] = useState('')
+  const [preferences, setPreferences] = useState({
+    notificacoesEmail: true,
+    perfilPublico: true,
+    mostrarValorConsulta: true,
+    aceitarSolicitacoes: true,
+  })
   const [message, setMessage] = useState('')
+  const [messageType, setMessageType] = useState('success')
   const [loadingAction, setLoadingAction] = useState('')
 
+  useEffect(() => {
+    setEmail(user?.email || '')
+  }, [user?.email])
+
+  useEffect(() => {
+    setPreferences({
+      notificacoesEmail: profile?.preferencias?.notificacoesEmail ?? true,
+      perfilPublico: profile?.preferencias?.perfilPublico ?? true,
+      mostrarValorConsulta: profile?.preferencias?.mostrarValorConsulta ?? true,
+      aceitarSolicitacoes: profile?.preferencias?.aceitarSolicitacoes ?? true,
+    })
+  }, [profile])
+
+  const showMessage = (text, type = 'success') => {
+    setMessage(text)
+    setMessageType(type)
+  }
+
+  const firebaseErrorMessage = (error, fallback) => {
+    const messages = {
+      'auth/requires-recent-login': 'Por seguranca, faca login novamente antes de alterar este dado.',
+      'auth/invalid-email': 'Informe um e-mail valido.',
+      'auth/email-already-in-use': 'Este e-mail ja esta em uso.',
+      'auth/weak-password': 'A nova senha esta fraca. Use pelo menos 6 caracteres.',
+      'auth/too-many-requests': 'Muitas tentativas. Aguarde um pouco e tente novamente.',
+    }
+    return messages[error.code] || error.message || fallback
+  }
+
   const changeEmail = async () => {
+    const nextEmail = email.trim()
+    if (!nextEmail) {
+      showMessage('Informe um e-mail valido.', 'error')
+      return
+    }
+    if (nextEmail === user?.email) {
+      showMessage('Este e-mail ja esta salvo na sua conta.', 'success')
+      return
+    }
+
     setLoadingAction('email')
     setMessage('')
     try {
-      await updateEmail(user, email)
-      setMessage('E-mail atualizado.')
+      await updateEmail(user, nextEmail)
+      await updateDoc(doc(db, 'users', user.uid), {
+        email: nextEmail,
+        atualizadoEm: serverTimestamp(),
+      })
+      showMessage('E-mail atualizado com sucesso.')
     } catch (error) {
       console.error('Erro ao alterar e-mail:', error)
-      setMessage(error.message || 'Nao foi possivel alterar o e-mail.')
+      showMessage(firebaseErrorMessage(error, 'Nao foi possivel alterar o e-mail.'), 'error')
     } finally {
       setLoadingAction('')
     }
   }
 
   const changePassword = async () => {
+    if (password.length < 6) {
+      showMessage('A senha deve ter pelo menos 6 caracteres.', 'error')
+      return
+    }
+    if (password !== passwordConfirm) {
+      showMessage('As senhas nao coincidem.', 'error')
+      return
+    }
+
     setLoadingAction('password')
     setMessage('')
     try {
       await updatePassword(user, password)
       setPassword('')
-      setMessage('Senha atualizada.')
+      setPasswordConfirm('')
+      showMessage('Senha atualizada com sucesso.')
     } catch (error) {
       console.error('Erro ao alterar senha:', error)
-      setMessage(error.message || 'Nao foi possivel alterar a senha.')
+      showMessage(firebaseErrorMessage(error, 'Nao foi possivel alterar a senha.'), 'error')
+    } finally {
+      setLoadingAction('')
+    }
+  }
+
+  const savePreferences = async () => {
+    if (!user?.uid) {
+      showMessage('Nao foi possivel identificar sua sessao. Faca login novamente.', 'error')
+      return
+    }
+
+    setLoadingAction('preferences')
+    setMessage('')
+    try {
+      await updateDoc(doc(db, 'users', user.uid), {
+        preferencias: preferences,
+        atualizadoEm: serverTimestamp(),
+      })
+      showMessage('Preferencias salvas. O diretorio e o preview passam a respeitar sua privacidade.')
+    } catch (error) {
+      console.error('Erro ao salvar preferencias:', error)
+      showMessage(error.message || 'Nao foi possivel salvar as preferencias.', 'error')
     } finally {
       setLoadingAction('')
     }
@@ -1336,7 +1484,7 @@ function SettingsPage({ user, onNavigate }) {
       await deleteUser(user)
     } catch (error) {
       console.error('Erro ao excluir conta:', error)
-      setMessage(error.message || 'Nao foi possivel excluir a conta.')
+      showMessage(firebaseErrorMessage(error, 'Nao foi possivel excluir a conta.'), 'error')
     } finally {
       setLoadingAction('')
     }
@@ -1347,30 +1495,82 @@ function SettingsPage({ user, onNavigate }) {
       <SectionHeader title="Configuracoes" description="Preferencias, seguranca e acoes de conta com execucao real no Firebase." />
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="card p-5">
-          <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Dados da conta</h2>
+          <div className="mb-4 flex items-center gap-2">
+            <Icon name="mail" className="h-4 w-4 text-brand-600" />
+            <h2 className="font-sans text-base font-semibold text-stone-950">Dados da conta</h2>
+          </div>
           <label className="label">E-mail</label>
-          <input className="input-field" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input type="email" className="input-field" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
+          <p className="mt-2 text-xs text-stone-400">Alteracoes sensiveis podem exigir login recente.</p>
           <button onClick={changeEmail} disabled={loadingAction === 'email'} className="btn-primary mt-3 gap-2"><Icon name="save" />{loadingAction === 'email' ? 'Salvando...' : 'Alterar e-mail'}</button>
         </div>
+
         <div className="card p-5">
-          <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Seguranca</h2>
+          <div className="mb-4 flex items-center gap-2">
+            <Icon name="lock" className="h-4 w-4 text-brand-600" />
+            <h2 className="font-sans text-base font-semibold text-stone-950">Seguranca</h2>
+          </div>
           <label className="label">Nova senha</label>
-          <input type="password" className="input-field" value={password} onChange={(e) => setPassword(e.target.value)} />
-          <button onClick={changePassword} disabled={password.length < 6 || loadingAction === 'password'} className="btn-primary mt-3 gap-2"><Icon name="lock" />{loadingAction === 'password' ? 'Salvando...' : 'Alterar senha'}</button>
+          <input type="password" className="input-field" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" />
+          <label className="label mt-3">Confirmar nova senha</label>
+          <input type="password" className="input-field" value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} autoComplete="new-password" />
+          <button onClick={changePassword} disabled={!password || !passwordConfirm || loadingAction === 'password'} className="btn-primary mt-3 gap-2"><Icon name="lock" />{loadingAction === 'password' ? 'Salvando...' : 'Alterar senha'}</button>
         </div>
-        <div className="card p-5">
-          <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Preferencias e privacidade</h2>
-          <p className="text-sm leading-relaxed text-stone-500">Notificacoes, privacidade, sessoes ativas e preferencias devem ser armazenadas no documento users quando a politica de produto definir os campos.</p>
+
+        <div className="card p-5 lg:col-span-2">
+          <div className="mb-4 flex items-center gap-2">
+            <Icon name="settings" className="h-4 w-4 text-brand-600" />
+            <h2 className="font-sans text-base font-semibold text-stone-950">Preferencias e privacidade</h2>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {[
+              ['notificacoesEmail', 'Receber notificacoes por e-mail', 'Avisos de solicitacoes e atividades importantes.'],
+              ['perfilPublico', 'Perfil visivel no diretorio', 'Permite que usuarios encontrem seu perfil profissional.'],
+              ['mostrarValorConsulta', 'Mostrar valor da consulta', 'Exibe o valor cadastrado no perfil publico.'],
+              ['aceitarSolicitacoes', 'Aceitar novas solicitacoes', 'Usuarios podem enviar pedidos de contato.'],
+            ].map(([key, title, description]) => (
+              <label key={key} className="settings-option flex cursor-pointer items-start gap-3 rounded-lg border border-stone-200 bg-stone-50/70 p-3">
+                <input
+                  type="checkbox"
+                  checked={preferences[key]}
+                  onChange={(e) => setPreferences((current) => ({ ...current, [key]: e.target.checked }))}
+                  className="mt-1 h-4 w-4 rounded border-stone-300 text-brand-600 focus:ring-brand-500"
+                />
+                <span>
+                  <span className="block text-sm font-medium text-stone-900">{title}</span>
+                  <span className="mt-0.5 block text-xs leading-relaxed text-stone-500">{description}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+          <button onClick={savePreferences} disabled={loadingAction === 'preferences'} className="btn-primary mt-4 gap-2"><Icon name="save" />{loadingAction === 'preferences' ? 'Salvando...' : 'Salvar preferencias'}</button>
         </div>
+
         <div className="card p-5">
-          <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Acoes da conta</h2>
+          <div className="mb-4 flex items-center gap-2">
+            <Icon name="logout" className="h-4 w-4 text-brand-600" />
+            <h2 className="font-sans text-base font-semibold text-stone-950">Sessao</h2>
+          </div>
+          <p className="mb-4 text-sm leading-relaxed text-stone-500">Encerre sua sessao neste dispositivo.</p>
+          <button onClick={() => onNavigate('logout')} className="btn-secondary gap-2"><Icon name="logout" />Logout</button>
+        </div>
+
+        <div className="card border-red-100 p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <Icon name="trash" className="h-4 w-4 text-red-500" />
+            <h2 className="font-sans text-base font-semibold text-stone-950">Zona de risco</h2>
+          </div>
+          <p className="mb-4 text-sm leading-relaxed text-stone-500">Excluir a conta remove seu documento de usuario e tenta remover tambem a conta de autenticacao.</p>
           <div className="flex flex-wrap gap-2">
-            <button onClick={() => onNavigate('logout')} className="btn-secondary gap-2"><Icon name="logout" />Logout</button>
             <button onClick={deleteAccount} disabled={loadingAction === 'delete'} className="btn-secondary gap-2 text-red-600"><Icon name="trash" />{loadingAction === 'delete' ? 'Excluindo...' : 'Excluir conta'}</button>
           </div>
         </div>
       </div>
-      {message && <div className="mt-4 rounded-lg border border-sage-100 bg-sage-50 px-4 py-3 text-sm text-sage-700">{message}</div>}
+      {message && (
+        <div className={`mt-4 rounded-lg border px-4 py-3 text-sm ${messageType === 'error' ? 'border-red-100 bg-red-50 text-red-600' : 'border-sage-100 bg-sage-50 text-sage-700'}`}>
+          {message}
+        </div>
+      )}
     </div>
   )
 }
@@ -1396,7 +1596,7 @@ export default function ProfessionalHome({ user, profile, activePage = 'home', o
       case 'stats':
         return <StatsPage data={data} metrics={metrics} user={user} />
       case 'settings':
-        return <SettingsPage user={user} onNavigate={onNavigate} />
+        return <SettingsPage user={user} profile={profile} onNavigate={onNavigate} />
       default:
         return <OverviewPage user={user} profile={profile} data={data} metrics={metrics} onNavigate={onNavigate} />
     }

@@ -75,7 +75,7 @@ export default function Sidebar({ activePage, onNavigate, isOpen, onClose, profi
             </p>
           </div>
         ) : (
-          <div className="rounded-lg border border-amber-100/70 bg-amber-50/75 p-3">
+          <div className="crisis-box rounded-lg border border-amber-100/70 bg-amber-50/75 p-3">
             <p className="text-xs leading-relaxed text-amber-800">
               <strong>Em crise?</strong> Ligue para o <strong>CVV: 188</strong>, atendimento 24h.
             </p>

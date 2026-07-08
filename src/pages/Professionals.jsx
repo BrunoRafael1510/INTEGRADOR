@@ -31,9 +31,24 @@ function normalizeRating(value) {
   return Math.min(5, Math.max(1, Math.round(rating)))
 }
 
-function ProfessionalCard({ prof, onAgendar }) {
+function normalizeMoney(value) {
+  if (value === '' || value === null || value === undefined) return null
+  const number = Number(String(value).replace(/[^\d,.-]/g, '').replace(',', '.'))
+  return Number.isFinite(number) && number >= 0 ? number : null
+}
+
+function formatMoney(value) {
+  const number = normalizeMoney(value)
+  return number === null ? '' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(number)
+}
+
+function ProfessionalCard({ prof, onAgendar, disabledAction = false }) {
   const iniciais = prof.nome?.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() || '?'
   const areas = prof.areas?.length ? prof.areas : [prof.especialidade].filter(Boolean)
+  const acceptsRequests = prof.preferencias?.aceitarSolicitacoes !== false
+  const isUnavailable = !disabledAction && !acceptsRequests
+  const shouldShowValue = prof.preferencias?.mostrarValorConsulta !== false
+  const consultaValue = shouldShowValue ? formatMoney(prof.valorConsulta) : ''
 
   return (
     <article className="card p-5 transition-colors duration-150 animate-fade-in">
@@ -55,6 +70,12 @@ function ProfessionalCard({ prof, onAgendar }) {
                 <Icon name="check" className="w-3 h-3" />
                 Verificado
               </span>
+              {isUnavailable && (
+                <span className="directory-privacy-badge badge border border-amber-100 bg-amber-50 text-amber-700">
+                  <Icon name="clock" className="w-3 h-3" />
+                  Indisponivel
+                </span>
+              )}
             </div>
           </div>
 
@@ -85,6 +106,11 @@ function ProfessionalCard({ prof, onAgendar }) {
                 <span className="font-medium text-stone-700">Atendimento:</span> {prof.atendimento}
               </p>
             )}
+            {consultaValue && (
+              <p className="bg-stone-50 border border-stone-100 rounded-lg px-3 py-2">
+                <span className="font-medium text-stone-700">Valor:</span> {consultaValue}
+              </p>
+            )}
             {prof.disponibilidade && (
               <p className="bg-stone-50 border border-stone-100 rounded-lg px-3 py-2 sm:col-span-2">
                 <span className="font-medium text-stone-700">Disponibilidade:</span> {prof.disponibilidade}
@@ -94,9 +120,13 @@ function ProfessionalCard({ prof, onAgendar }) {
 
           <div className="flex items-center justify-between gap-3 mt-4">
             <p className="text-xs text-stone-400">Contato mediado pelo SafeTalk.</p>
-            <button onClick={() => onAgendar(prof)} className="btn-primary text-xs py-2 gap-2">
+            <button
+              onClick={() => onAgendar(prof)}
+              disabled={disabledAction || isUnavailable}
+              className="btn-primary text-xs py-2 gap-2"
+            >
               <Icon name="mail" className="w-3.5 h-3.5" />
-              Solicitar contato
+              {disabledAction ? 'Seu perfil' : isUnavailable ? 'Indisponivel' : 'Solicitar contato'}
             </button>
           </div>
         </div>
@@ -116,7 +146,10 @@ export default function Professionals({ user, viewerProfile }) {
   const [savingRequest, setSavingRequest] = useState(false)
   const [savingReview, setSavingReview] = useState(false)
   const [modalMessage, setModalMessage] = useState('')
-  const isProfessionalViewer = viewerProfile?.tipo === 'profissional'
+  const loggedUserIsListedProfessional = profissionais.some((prof) => prof.id === user?.uid)
+  const isProfessionalViewer = viewerProfile?.tipo === 'profissional' || loggedUserIsListedProfessional
+  const isOwnProfessionalProfile = Boolean(agendando?.id && agendando.id === user?.uid)
+  const blocksPatientActions = isProfessionalViewer || isOwnProfessionalProfile
 
   useEffect(() => {
     const fetchProfs = async () => {
@@ -147,6 +180,11 @@ export default function Professionals({ user, viewerProfile }) {
   }, [])
 
   const openContactModal = async (prof) => {
+    if (prof.preferencias?.aceitarSolicitacoes === false && prof.id !== user?.uid) {
+      setModalMessage('Este profissional nao esta aceitando novas solicitacoes no momento.')
+      return
+    }
+
     setAgendando(prof)
     setRequestForm({ motivo: '', categoria: 'Outros' })
     setReviewForm({ nota: '5', comentario: '' })
@@ -169,8 +207,12 @@ export default function Professionals({ user, viewerProfile }) {
 
   const sendRequest = async () => {
     if (!agendando) return
-    if (isProfessionalViewer) {
+    if (blocksPatientActions) {
       setModalMessage('Perfis profissionais nao podem solicitar contato por este fluxo.')
+      return
+    }
+    if (agendando.preferencias?.aceitarSolicitacoes === false) {
+      setModalMessage('Este profissional nao esta aceitando novas solicitacoes no momento.')
       return
     }
     if (!requestForm.motivo.trim()) {
@@ -205,7 +247,7 @@ export default function Professionals({ user, viewerProfile }) {
 
   const sendReview = async () => {
     if (!agendando) return
-    if (isProfessionalViewer) {
+    if (blocksPatientActions) {
       setModalMessage('Somente usuarios podem avaliar profissionais.')
       return
     }
@@ -244,7 +286,8 @@ export default function Professionals({ user, viewerProfile }) {
     }
   }
 
-  const filtrados = profissionais.filter((p) => {
+  const visibleProfessionals = profissionais.filter((p) => p.preferencias?.perfilPublico !== false || p.id === user?.uid)
+  const filtrados = visibleProfessionals.filter((p) => {
     const termo = busca.toLowerCase()
     const texto = [
       p.nome,
@@ -339,14 +382,19 @@ export default function Professionals({ user, viewerProfile }) {
       ) : (
         <div className="space-y-4">
           {filtrados.map(prof => (
-            <ProfessionalCard key={prof.id} prof={prof} onAgendar={openContactModal} />
+            <ProfessionalCard
+              key={prof.id}
+              prof={prof}
+              onAgendar={openContactModal}
+              disabledAction={prof.id === user?.uid}
+            />
           ))}
         </div>
       )}
 
       {agendando && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm">
-          <div className="glass-panel p-6 w-full max-w-sm animate-slide-up">
+          <div className="contact-modal glass-panel p-6 w-full max-w-sm animate-slide-up">
             <h3 className="font-serif text-xl text-stone-900 mb-1">Solicitar contato</h3>
             <p className="text-stone-500 text-sm mb-4">
               Voce esta enviando uma solicitacao para <strong>{agendando.nome}</strong>.
@@ -356,7 +404,7 @@ export default function Professionals({ user, viewerProfile }) {
                 {modalMessage}
               </div>
             )}
-            {isProfessionalViewer ? (
+            {blocksPatientActions ? (
               <div className="rounded-lg border border-amber-100 bg-amber-50 p-4 text-sm text-amber-800">
                 Contas profissionais podem visualizar o diretorio, mas nao podem solicitar contato nem avaliar outros profissionais por este fluxo.
               </div>
@@ -369,7 +417,7 @@ export default function Professionals({ user, viewerProfile }) {
                   </div>
                   <div>
                     <label className="label">Categoria</label>
-                    <select className="input-field" value={requestForm.categoria} onChange={(e) => setRequestForm((current) => ({ ...current, categoria: e.target.value }))}>
+                    <select className="contact-category input-field" value={requestForm.categoria} onChange={(e) => setRequestForm((current) => ({ ...current, categoria: e.target.value }))}>
                       {AREAS.filter((item) => item !== 'Todas').map((item) => <option key={item}>{item}</option>)}
                       <option>Outros</option>
                     </select>
@@ -394,7 +442,7 @@ export default function Professionals({ user, viewerProfile }) {
               </button>
               <button
                 onClick={sendRequest}
-                disabled={savingRequest || isProfessionalViewer}
+                disabled={savingRequest || blocksPatientActions}
                 className="btn-primary flex-1"
               >
                 {savingRequest ? 'Enviando...' : 'Confirmar'}

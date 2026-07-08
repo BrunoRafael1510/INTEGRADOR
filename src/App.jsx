@@ -45,12 +45,12 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Landing user={user} />} />
+        <Route path="/" element={<Landing user={user} theme={theme} onThemeToggle={toggleTheme} />} />
         <Route path="/login" element={
-          user ? <Navigate to="/dashboard" replace /> : <Login />
+          user ? <Navigate to="/dashboard" replace /> : <Login theme={theme} onThemeToggle={toggleTheme} />
         } />
         <Route path="/cadastro" element={
-          user ? <Navigate to="/dashboard" replace /> : <Register />
+          user ? <Navigate to="/dashboard" replace /> : <Register theme={theme} onThemeToggle={toggleTheme} />
         } />
 
         <Route path="/dashboard/*" element={

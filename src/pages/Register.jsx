@@ -4,6 +4,7 @@ import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { auth, db } from '../services/firebase'
 import Icon from '../components/Icon'
+import ThemeToggle from '../components/ThemeToggle'
 
 const TIPOS = [
   {
@@ -34,7 +35,7 @@ const AREAS = [
 
 const ATENDIMENTOS = ['Online', 'Presencial', 'Online e presencial']
 
-export default function Register() {
+export default function Register({ theme = 'light', onThemeToggle }) {
   const navigate = useNavigate()
   const [etapa, setEtapa] = useState(1)
   const [tipo, setTipo] = useState('usuario')
@@ -126,6 +127,9 @@ export default function Register() {
 
   return (
     <div className="app-bg min-h-screen flex items-center justify-center px-4 py-12">
+      <div className="fixed right-4 top-4 z-20">
+        <ThemeToggle theme={theme} onThemeToggle={onThemeToggle} />
+      </div>
       <div className="w-full max-w-3xl animate-slide-up">
         <div className="text-center mb-8">
           <Link to="/" className="font-sans text-3xl font-bold text-stone-900 hover:text-brand-700 transition-colors duration-150">

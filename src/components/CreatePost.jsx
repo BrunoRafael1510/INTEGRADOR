@@ -15,6 +15,10 @@ export default function CreatePost({ user, onSuccess }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!form.conteudo.trim()) return
+    if (!user?.uid) {
+      setErro('Voce precisa estar logado para publicar.')
+      return
+    }
     setLoading(true)
     setErro('')
 
@@ -29,7 +33,8 @@ export default function CreatePost({ user, onSuccess }) {
       await addDoc(collection(db, 'posts'), {
         conteudo: form.conteudo,
         categoria: form.categoria || 'Outros',
-        autorUid: user?.uid || 'anon',
+        autorUid: user.uid,
+        autorNome: user.displayName || 'Anonimo',
         criadoEm: serverTimestamp(),
         respostas: [],
         curtidas: [],
