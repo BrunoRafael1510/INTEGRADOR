@@ -3,8 +3,9 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../services/firebase'
 import { moderarTexto } from '../services/ai'
 import Icon from './Icon'
+import { SUPPORT_CATEGORIES } from '../constants/options'
 
-const CATEGORIAS = ['Ansiedade', 'Familia', 'Relacionamentos', 'Trabalho', 'Solidao', 'Luto', 'Autoestima', 'Outros']
+const CATEGORIAS = SUPPORT_CATEGORIES
 
 export default function CreatePost({ user, onSuccess }) {
   const [form, setForm] = useState({ conteudo: '', categoria: '' })

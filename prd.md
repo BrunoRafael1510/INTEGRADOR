@@ -25,7 +25,7 @@ Criar uma plataforma de apoio emocional com feed anônimo, interação entre usu
 - Permitir que profissionais editem seus perfis.
 - Exibir indicadores, solicitações, agenda e avaliações para profissionais.
 - Utilizar Firebase para autenticação e persistência de dados.
-- Utilizar IA para moderação de textos e reformulação empática de respostas.
+- Manter interações de texto sem dependência de API externa de IA.
 
 ## 3. Público-Alvo / Tipos de Usuário
 
@@ -79,7 +79,7 @@ Pode:
 
 ### Criação de desabafo
 - Usuário escreve um texto e escolhe categoria.
-- Conteúdo é moderado via serviço de IA antes de ser salvo.
+- Conteúdo é salvo diretamente no Firestore após validações básicas de formulário.
 - Publicação é salva no Firestore com autor, categoria, data, curtidas e respostas.
 
 ### Interações nos posts
@@ -170,7 +170,7 @@ Pode:
 ### Serviços externos
 - **Firebase Authentication**: login, cadastro e controle de sessão.
 - **Cloud Firestore**: armazenamento de usuários, posts, respostas, solicitações, agenda, avaliações e dados auxiliares.
-- **Groq API**: usada para moderação de texto e reformulação empática de respostas.
+- O projeto não depende mais de Groq ou API externa de IA no frontend.
 
 ## 7. Estrutura do Projeto
 

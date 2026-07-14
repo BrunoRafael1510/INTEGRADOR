@@ -5,6 +5,7 @@ import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { auth, db } from '../services/firebase'
 import Icon from '../components/Icon'
 import ThemeToggle from '../components/ThemeToggle'
+import { AVAILABILITY_OPTIONS, PROFESSIONAL_AREA_OPTIONS, SERVICE_MODALITIES, SPECIALTY_OPTIONS } from '../constants/options'
 
 const TIPOS = [
   {
@@ -21,19 +22,8 @@ const TIPOS = [
   },
 ]
 
-const AREAS = [
-  'Psicologia clinica',
-  'Ansiedade e estresse',
-  'Relacionamentos',
-  'Terapia familiar',
-  'Luto',
-  'Autoestima',
-  'Adolescencia',
-  'Orientacao profissional',
-  'Outro',
-]
-
-const ATENDIMENTOS = ['Online', 'Presencial', 'Online e presencial']
+const AREAS = PROFESSIONAL_AREA_OPTIONS
+const ATENDIMENTOS = SERVICE_MODALITIES
 
 export default function Register({ theme = 'light', onThemeToggle }) {
   const navigate = useNavigate()
@@ -99,13 +89,19 @@ export default function Register({ theme = 'light', onThemeToggle }) {
         email: form.email,
         tipo,
         ...(tipo === 'profissional' && {
-          especialidade: form.especialidade || form.areas[0],
+          especialidade: form.especialidade || SPECIALTY_OPTIONS[0],
           areas: form.areas,
           descricao: form.descricao,
           crp: form.crp,
           abordagem: form.abordagem,
           atendimento: form.atendimento,
           disponibilidade: form.disponibilidade,
+          preferencias: {
+            notificacoesEmail: true,
+            perfilPublico: true,
+            mostrarValorConsulta: true,
+            aceitarSolicitacoes: true,
+          },
           avaliacoes: [],
           media: 0,
         }),
@@ -248,8 +244,10 @@ export default function Register({ theme = 'light', onThemeToggle }) {
                         <div className="grid sm:grid-cols-2 gap-4">
                           <div>
                             <label className="label">Especialidade principal</label>
-                            <input name="especialidade" value={form.especialidade} onChange={handleChange}
-                              placeholder="Ex: Psicologia clinica" className="input-field" />
+                            <select name="especialidade" value={form.especialidade} onChange={handleChange} className="input-field">
+                              <option value="">Selecione</option>
+                              {SPECIALTY_OPTIONS.map((item) => <option key={item}>{item}</option>)}
+                            </select>
                           </div>
                           <div>
                             <label className="label">CRP / Registro profissional</label>
@@ -267,8 +265,10 @@ export default function Register({ theme = 'light', onThemeToggle }) {
                           </div>
                           <div>
                             <label className="label">Disponibilidade</label>
-                            <input name="disponibilidade" value={form.disponibilidade} onChange={handleChange}
-                              placeholder="Ex: Noites e sabados" className="input-field" />
+                            <select name="disponibilidade" value={form.disponibilidade} onChange={handleChange} className="input-field">
+                              <option value="">Selecione</option>
+                              {AVAILABILITY_OPTIONS.map((item) => <option key={item}>{item}</option>)}
+                            </select>
                           </div>
                         </div>
 

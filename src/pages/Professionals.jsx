@@ -2,18 +2,9 @@ import { useState, useEffect } from 'react'
 import { addDoc, collection, getDocs, query, serverTimestamp, where } from 'firebase/firestore'
 import { db } from '../services/firebase'
 import Icon from '../components/Icon'
+import { DIRECTORY_AREA_FILTERS, PROFESSIONAL_AREA_OPTIONS } from '../constants/options'
 
-const AREAS = [
-  'Todas',
-  'Psicologia clinica',
-  'Ansiedade e estresse',
-  'Relacionamentos',
-  'Terapia familiar',
-  'Luto',
-  'Autoestima',
-  'Adolescencia',
-  'Orientacao profissional',
-]
+const AREAS = DIRECTORY_AREA_FILTERS
 
 function StarRating({ value = 0 }) {
   const rating = Number(value)
@@ -142,9 +133,7 @@ export default function Professionals({ user, viewerProfile }) {
   const [area, setArea] = useState('Todas')
   const [agendando, setAgendando] = useState(null)
   const [requestForm, setRequestForm] = useState({ motivo: '', categoria: 'Outros' })
-  const [reviewForm, setReviewForm] = useState({ nota: '5', comentario: '' })
   const [savingRequest, setSavingRequest] = useState(false)
-  const [savingReview, setSavingReview] = useState(false)
   const [modalMessage, setModalMessage] = useState('')
   const loggedUserIsListedProfessional = profissionais.some((prof) => prof.id === user?.uid)
   const isProfessionalViewer = viewerProfile?.tipo === 'profissional' || loggedUserIsListedProfessional
@@ -187,7 +176,6 @@ export default function Professionals({ user, viewerProfile }) {
 
     setAgendando(prof)
     setRequestForm({ motivo: '', categoria: 'Outros' })
-    setReviewForm({ nota: '5', comentario: '' })
     setModalMessage('')
 
     try {
@@ -223,6 +211,20 @@ export default function Professionals({ user, viewerProfile }) {
     setSavingRequest(true)
     setModalMessage('')
     try {
+      const existingSnap = await getDocs(query(
+        collection(db, 'requests'),
+        where('pacienteUid', '==', user.uid)
+      ))
+      const hasOpenRequest = existingSnap.docs.some((docSnap) => {
+        const request = docSnap.data()
+        const status = request.status || 'nova'
+        return request.profissionalUid === agendando.id && ['nova', 'pendente', 'aceita'].includes(status)
+      })
+      if (hasOpenRequest) {
+        setModalMessage('Voce ja tem uma solicitacao ou atendimento aberto com este profissional.')
+        return
+      }
+
       await addDoc(collection(db, 'requests'), {
         profissionalUid: agendando.id,
         profissionalNome: agendando.nome || '',
@@ -242,47 +244,6 @@ export default function Professionals({ user, viewerProfile }) {
       setModalMessage(error.message || 'Nao foi possivel enviar a solicitacao.')
     } finally {
       setSavingRequest(false)
-    }
-  }
-
-  const sendReview = async () => {
-    if (!agendando) return
-    if (blocksPatientActions) {
-      setModalMessage('Somente usuarios podem avaliar profissionais.')
-      return
-    }
-    const nota = normalizeRating(reviewForm.nota)
-    if (!nota) {
-      setModalMessage('Informe uma nota valida entre 1 e 5.')
-      return
-    }
-
-    setSavingReview(true)
-    setModalMessage('')
-    try {
-      await addDoc(collection(db, 'reviews'), {
-        profissionalUid: agendando.id,
-        profissionalNome: agendando.nome || '',
-        pacienteUid: user?.uid || 'anon',
-        pacienteNome: user?.displayName || 'Usuario anonimo',
-        nota,
-        comentario: reviewForm.comentario.trim(),
-        origem: 'diretorio',
-        criadaEm: serverTimestamp(),
-      })
-      setModalMessage('Avaliacao enviada com sucesso.')
-      setReviewForm({ nota: '5', comentario: '' })
-      setProfissionais((current) => current.map((prof) => {
-        if (prof.id !== agendando.id) return prof
-        const total = prof.totalAvaliacoes || 0
-        const media = total ? ((prof.media || 0) * total + nota) / (total + 1) : nota
-        return { ...prof, media, totalAvaliacoes: total + 1 }
-      }))
-    } catch (error) {
-      console.error('Erro ao enviar avaliacao:', error)
-      setModalMessage(error.message || 'Nao foi possivel enviar a avaliacao.')
-    } finally {
-      setSavingReview(false)
     }
   }
 
@@ -386,7 +347,7 @@ export default function Professionals({ user, viewerProfile }) {
               key={prof.id}
               prof={prof}
               onAgendar={openContactModal}
-              disabledAction={prof.id === user?.uid}
+              disabledAction={isProfessionalViewer || prof.id === user?.uid}
             />
           ))}
         </div>
@@ -418,21 +379,10 @@ export default function Professionals({ user, viewerProfile }) {
                   <div>
                     <label className="label">Categoria</label>
                     <select className="contact-category input-field" value={requestForm.categoria} onChange={(e) => setRequestForm((current) => ({ ...current, categoria: e.target.value }))}>
-                      {AREAS.filter((item) => item !== 'Todas').map((item) => <option key={item}>{item}</option>)}
+                      {PROFESSIONAL_AREA_OPTIONS.map((item) => <option key={item}>{item}</option>)}
                       <option>Outros</option>
                     </select>
                   </div>
-                </div>
-                <div className="mt-5 rounded-lg border border-stone-200 bg-stone-50 p-4">
-                  <p className="mb-3 text-sm font-medium text-stone-800">Avaliar profissional</p>
-                  <div className="grid grid-cols-[92px_1fr] gap-3">
-                    <input type="number" min="1" max="5" step="1" className="input-field" value={reviewForm.nota} onChange={(e) => setReviewForm((current) => ({ ...current, nota: e.target.value }))} />
-                    <input className="input-field" value={reviewForm.comentario} onChange={(e) => setReviewForm((current) => ({ ...current, comentario: e.target.value }))} placeholder="Comentario opcional" />
-                  </div>
-                  <button onClick={sendReview} disabled={savingReview} className="btn-secondary mt-3 w-full gap-2">
-                    <Icon name="star" className="w-4 h-4" />
-                    {savingReview ? 'Salvando...' : 'Enviar avaliacao'}
-                  </button>
                 </div>
               </>
             )}

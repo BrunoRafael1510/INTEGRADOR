@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { doc, updateDoc, increment, arrayUnion, arrayRemove } from 'firebase/firestore'
+import { doc, updateDoc, increment, arrayUnion, arrayRemove, serverTimestamp } from 'firebase/firestore'
 import { db } from '../services/firebase'
-import { moderarTexto, reformularResposta } from '../services/ai'
+import { moderarTexto } from '../services/ai'
 import Icon from './Icon'
 
 const CATEGORY_COLORS = {
@@ -39,35 +39,53 @@ export default function PostCard({ post, currentUser }) {
   const [showReply, setShowReply] = useState(false)
   const [loadingReply, setLoadingReply] = useState(false)
   const [erroReply, setErroReply] = useState('')
-  const [aiSuggestion, setAiSuggestion] = useState('')
-  const [loadingAI, setLoadingAI] = useState(false)
+  const [actionError, setActionError] = useState('')
+  const [reporting, setReporting] = useState(false)
 
   const respostas = post.respostas || []
   const curtidas = post.curtidas || []
+  const denunciadoPor = post.denunciadoPor || []
   const jaCurtiu = curtidas.includes(currentUser?.uid)
+  const jaDenunciou = currentUser?.uid && denunciadoPor.includes(currentUser.uid)
   const isOwnPost = Boolean(currentUser?.uid && post.autorUid === currentUser.uid)
   const categoria = normalizeCategory(post.categoria)
 
   const handleCurtir = async () => {
     if (!currentUser) return
     const ref = doc(db, 'posts', post.id)
-    if (jaCurtiu) {
-      await updateDoc(ref, { curtidas: arrayRemove(currentUser.uid) })
-    } else {
-      await updateDoc(ref, { curtidas: arrayUnion(currentUser.uid) })
+    setActionError('')
+    try {
+      if (jaCurtiu) {
+        await updateDoc(ref, { curtidas: arrayRemove(currentUser.uid) })
+      } else {
+        await updateDoc(ref, { curtidas: arrayUnion(currentUser.uid) })
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar curtida:', error)
+      setActionError('Nao foi possivel atualizar a curtida.')
     }
   }
 
-  const handleReformular = async () => {
-    if (!resposta.trim()) return
-    setLoadingAI(true)
-    const sugestao = await reformularResposta(resposta)
-    setAiSuggestion(sugestao)
-    setLoadingAI(false)
+  const handleDenunciar = async () => {
+    if (!currentUser?.uid || jaDenunciou || reporting) return
+    setReporting(true)
+    setActionError('')
+    try {
+      await updateDoc(doc(db, 'posts', post.id), {
+        denuncias: increment(1),
+        denunciadoPor: arrayUnion(currentUser.uid),
+        ultimaDenunciaEm: serverTimestamp(),
+      })
+    } catch (error) {
+      console.error('Erro ao denunciar publicacao:', error)
+      setActionError('Nao foi possivel registrar a denuncia.')
+    } finally {
+      setReporting(false)
+    }
   }
 
   const handleEnviarResposta = async () => {
-    const texto = aiSuggestion || resposta
+    const texto = resposta
     if (!texto.trim()) return
     if (isOwnPost) {
       setErroReply('Voce nao pode responder seu proprio desabafo.')
@@ -95,7 +113,6 @@ export default function PostCard({ post, currentUser }) {
         totalRespostas: increment(1),
       })
       setResposta('')
-      setAiSuggestion('')
       setShowReply(false)
     } catch (e) {
       setErroReply('Erro ao enviar resposta.')
@@ -155,10 +172,20 @@ export default function PostCard({ post, currentUser }) {
           </button>
         )}
 
-        <button className="ml-auto text-xs text-stone-300 hover:text-red-500 transition-colors" title="Denunciar" aria-label="Denunciar">
+        <button
+          onClick={handleDenunciar}
+          disabled={!currentUser?.uid || jaDenunciou || reporting}
+          className={`ml-auto text-xs transition-colors ${jaDenunciou ? 'text-red-400' : 'text-stone-300 hover:text-red-500'} disabled:cursor-not-allowed disabled:opacity-70`}
+          title={jaDenunciou ? 'Denuncia registrada' : 'Denunciar'}
+          aria-label={jaDenunciou ? 'Denuncia registrada' : 'Denunciar'}
+        >
           <Icon name="flag" className="w-4 h-4" />
         </button>
       </div>
+
+      {actionError && (
+        <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-500">{actionError}</p>
+      )}
 
       {respostas.length > 0 && (
         <div className="mt-4 space-y-3 pt-3 border-t border-stone-100">
@@ -168,7 +195,7 @@ export default function PostCard({ post, currentUser }) {
                 <Icon name="message" className="w-3.5 h-3.5" />
               </div>
               <div className="community-reply flex-1 bg-stone-50/70 border border-stone-200 rounded-lg px-3 py-2">
-                <p className="text-xs font-medium text-stone-500 mb-0.5">{r.autorNome}</p>
+                <p className="text-xs font-medium text-stone-500 mb-0.5">{r.tipoAutor === 'profissional' ? r.autorNome : 'Anonimo'}</p>
                 <p className="text-sm text-stone-700 leading-relaxed">{r.texto}</p>
               </div>
             </div>
@@ -185,27 +212,11 @@ export default function PostCard({ post, currentUser }) {
         <div className="mt-4 pt-3 border-t border-stone-100 space-y-3 animate-slide-up">
           <textarea
             value={resposta}
-            onChange={(e) => { setResposta(e.target.value); setAiSuggestion('') }}
+            onChange={(e) => setResposta(e.target.value)}
             placeholder="Escreva uma resposta com empatia..."
             className="input-field text-sm"
             rows={3}
           />
-
-          {aiSuggestion && (
-            <div className="bg-brand-50 border border-brand-100 rounded-lg p-3">
-              <p className="text-xs text-brand-600 font-medium mb-1 flex items-center gap-1.5">
-                <Icon name="spark" className="w-3.5 h-3.5" />
-                Sugestao mais empatica
-              </p>
-              <p className="text-sm text-stone-700">{aiSuggestion}</p>
-              <button
-                onClick={() => { setResposta(aiSuggestion); setAiSuggestion('') }}
-                className="text-xs text-brand-600 hover:underline mt-1"
-              >
-                Usar esta versao
-              </button>
-            </div>
-          )}
 
           {erroReply && (
             <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg">{erroReply}</p>
@@ -213,16 +224,8 @@ export default function PostCard({ post, currentUser }) {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={handleReformular}
-              disabled={!resposta.trim() || loadingAI}
-              className="btn-ghost text-xs gap-1.5"
-            >
-              <Icon name="spark" className="w-3.5 h-3.5" />
-              {loadingAI ? 'Ajustando...' : 'Tornar mais empatico'}
-            </button>
-            <button
               onClick={handleEnviarResposta}
-              disabled={(!resposta.trim() && !aiSuggestion) || loadingReply}
+              disabled={!resposta.trim() || loadingReply}
               className="btn-primary text-xs ml-auto"
             >
               {loadingReply ? 'Enviando...' : 'Responder'}

@@ -3,8 +3,9 @@ import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestor
 import { db } from '../services/firebase'
 import PostCard from '../components/PostCard'
 import Icon from '../components/Icon'
+import { CATEGORY_FILTERS } from '../constants/options'
 
-const CATEGORIAS = ['Todas', 'Ansiedade', 'Familia', 'Relacionamentos', 'Trabalho', 'Solidao', 'Luto', 'Autoestima', 'Outros']
+const CATEGORIAS = CATEGORY_FILTERS
 
 export default function Home({ user }) {
   const [posts, setPosts] = useState([])
@@ -13,11 +14,19 @@ export default function Home({ user }) {
 
   useEffect(() => {
     const q = query(collection(db, 'posts'), orderBy('criadoEm', 'desc'), limit(30))
-    const unsub = onSnapshot(q, (snap) => {
-      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-      setPosts(data)
-      setLoading(false)
-    })
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        setPosts(data)
+        setLoading(false)
+      },
+      (error) => {
+        console.error('Erro ao carregar feed:', error)
+        setPosts([])
+        setLoading(false)
+      }
+    )
     return unsub
   }, [])
 

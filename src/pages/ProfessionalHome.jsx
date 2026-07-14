@@ -1,15 +1,29 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { addDoc, deleteDoc, doc, increment, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, arrayUnion, collection, where } from 'firebase/firestore'
+import { addDoc, deleteDoc, doc, increment, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, arrayUnion, collection, where, writeBatch } from 'firebase/firestore'
 import { deleteUser, updateEmail, updatePassword } from 'firebase/auth'
 import { db } from '../services/firebase'
+import { moderarTexto } from '../services/ai'
 import Icon from '../components/Icon'
+import SessionChat from '../components/SessionChat'
+import {
+  AVAILABILITY_OPTIONS,
+  CATEGORY_FILTERS,
+  CERTIFICATION_OPTIONS,
+  EXPERIENCE_OPTIONS,
+  FORMATION_OPTIONS,
+  LANGUAGE_OPTIONS,
+  PROFESSIONAL_AREA_OPTIONS,
+  REQUEST_STATUS,
+  SERVICE_MODALITIES,
+  SPECIALTY_OPTIONS,
+} from '../constants/options'
 
-const REQUEST_STATUS = ['nova', 'pendente', 'aceita', 'recusada', 'finalizada']
-const CATEGORIES = ['Todas', 'Ansiedade', 'Depressao', 'Relacionamentos', 'Familia', 'Trabalho', 'Estudos', 'Autoestima', 'Outros']
+const CATEGORIES = CATEGORY_FILTERS
 const PROFILE_FIELDS = [
   'fotoUrl', 'nome', 'crp', 'especialidade', 'areas', 'formacao', 'experiencia', 'descricao',
-  'atendimento', 'cidade', 'estado', 'valorConsulta', 'idiomas', 'disponibilidade',
+  'atendimento', 'cidade', 'estado', 'valorConsulta', 'idiomas', 'disponibilidade', 'certificacoes',
 ]
+const BIO_MAX_LENGTH = 600
 
 function toDate(value) {
   if (!value) return null
@@ -79,8 +93,22 @@ function arrayFromText(value) {
   return value.split(',').map((item) => item.trim()).filter(Boolean)
 }
 
-function textFromArray(value) {
-  return Array.isArray(value) ? value.join(', ') : value || ''
+function normalizeArray(value) {
+  if (Array.isArray(value)) return value
+  if (typeof value === 'string') return arrayFromText(value)
+  return []
+}
+
+function onlyAllowed(value, options) {
+  return normalizeArray(value).filter((item) => options.includes(item))
+}
+
+function onlyAllowedSingle(value, options) {
+  return options.includes(value) ? value : ''
+}
+
+function firstAllowed(value, options) {
+  return onlyAllowed(value, options)[0] || ''
 }
 
 function profileCompletion(profile) {
@@ -186,6 +214,18 @@ function ProgressBar({ value }) {
   return (
     <div className="h-2 overflow-hidden rounded-full bg-stone-200/70">
       <div className="h-full rounded-full bg-brand-600 transition-all duration-150" style={{ width: `${value}%` }} />
+    </div>
+  )
+}
+
+function ProfileSelect({ label, value, options, onChange }) {
+  return (
+    <div>
+      <label className="label">{label}</label>
+      <select className="input-field" value={value || ''} onChange={(event) => onChange(event.target.value)}>
+        <option value="">Selecione</option>
+        {options.map((option) => <option key={option}>{option}</option>)}
+      </select>
     </div>
   )
 }
@@ -426,12 +466,14 @@ function OverviewPage({ user, profile, data, metrics, onNavigate }) {
 
 function ProfilePreview({ profile }) {
   const displayName = profile?.nome || 'Nome profissional nao informado'
-  const areas = Array.isArray(profile?.areas) ? profile.areas : []
+  const especialidade = onlyAllowedSingle(profile?.especialidade, SPECIALTY_OPTIONS)
+  const areas = onlyAllowed(profile?.areas, PROFESSIONAL_AREA_OPTIONS)
+  const certificacoes = onlyAllowed(profile?.certificacoes, CERTIFICATION_OPTIONS)
   const shouldShowValue = profile?.preferencias?.mostrarValorConsulta !== false
   const details = [
     { label: 'Modalidade', value: profile?.atendimento || 'Nao informada', icon: 'video' },
     { label: 'Valor', value: shouldShowValue ? formatMoney(profile?.valorConsulta) : 'Valor privado', icon: 'file' },
-    { label: 'Disponibilidade', value: profile?.disponibilidade || 'Nao informada', icon: 'calendar' },
+    { label: 'Disponibilidade', value: onlyAllowedSingle(profile?.disponibilidade, AVAILABILITY_OPTIONS) || 'Nao informada', icon: 'calendar' },
   ]
 
   return (
@@ -445,7 +487,7 @@ function ProfilePreview({ profile }) {
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
                 <h3 className="truncate font-semibold text-slate-950">{displayName}</h3>
-                <p className="text-sm font-medium text-brand-700">{profile?.especialidade || 'Especialidade nao informada'}</p>
+                <p className="text-sm font-medium text-brand-700">{especialidade || 'Especialidade nao informada'}</p>
                 <p className="mt-1 text-xs text-slate-500">
                   {[profile?.crp, profile?.cidade && profile?.estado ? `${profile.cidade}, ${profile.estado}` : null].filter(Boolean).join(' - ') || 'Registro e localizacao pendentes'}
                 </p>
@@ -482,6 +524,16 @@ function ProfilePreview({ profile }) {
           <div className="flex flex-wrap gap-2">
             {areas.slice(0, 6).map((area) => <span key={area} className="profile-preview-chip badge border border-stone-200 bg-stone-100/70 text-stone-600">{area}</span>)}
             {areas.length > 6 && <span className="profile-preview-chip badge border border-stone-200 bg-stone-100/70 text-stone-600">+{areas.length - 6}</span>}
+          </div>
+        )}
+
+        {certificacoes.length > 0 && (
+          <div className="border-t border-stone-200 pt-4">
+            <p className="mb-2 text-xs font-medium uppercase tracking-normal text-slate-400">Certificacoes</p>
+            <div className="flex flex-wrap gap-2">
+              {certificacoes.slice(0, 5).map((item) => <span key={item} className="profile-preview-chip badge border border-stone-200 bg-stone-100/70 text-stone-600">{item}</span>)}
+              {certificacoes.length > 5 && <span className="profile-preview-chip badge border border-stone-200 bg-stone-100/70 text-stone-600">+{certificacoes.length - 5}</span>}
+            </div>
           </div>
         )}
       </div>
@@ -560,9 +612,15 @@ function ProfilePage({ user, profile, onNavigate }) {
         uid: user.uid,
         email: user.email || draft.email || '',
         tipo: 'profissional',
+        especialidade: onlyAllowedSingle(draft.especialidade, SPECIALTY_OPTIONS),
+        formacao: onlyAllowedSingle(draft.formacao, FORMATION_OPTIONS),
+        experiencia: onlyAllowedSingle(draft.experiencia, EXPERIENCE_OPTIONS),
+        disponibilidade: onlyAllowedSingle(draft.disponibilidade, AVAILABILITY_OPTIONS),
+        descricao: String(draft.descricao || '').slice(0, BIO_MAX_LENGTH),
         valorConsulta,
-        areas: Array.isArray(draft.areas) ? draft.areas : arrayFromText(draft.areas || ''),
-        idiomas: Array.isArray(draft.idiomas) ? draft.idiomas : arrayFromText(draft.idiomas || ''),
+        areas: onlyAllowed(draft.areas, PROFESSIONAL_AREA_OPTIONS),
+        idiomas: onlyAllowed(draft.idiomas, LANGUAGE_OPTIONS),
+        certificacoes: onlyAllowed(draft.certificacoes, CERTIFICATION_OPTIONS),
         atualizadoEm: serverTimestamp(),
       }, { merge: true })
       setSaveState('salvo')
@@ -582,6 +640,14 @@ function ProfilePage({ user, profile, onNavigate }) {
     setDraft((current) => ({ ...current, [field]: value }))
   }
   const completion = profileCompletion(draft)
+  const selectedEspecialidade = onlyAllowedSingle(draft.especialidade, SPECIALTY_OPTIONS)
+  const selectedFormacao = onlyAllowedSingle(draft.formacao, FORMATION_OPTIONS)
+  const selectedExperiencia = onlyAllowedSingle(draft.experiencia, EXPERIENCE_OPTIONS)
+  const selectedArea = firstAllowed(draft.areas, PROFESSIONAL_AREA_OPTIONS)
+  const selectedIdioma = firstAllowed(draft.idiomas, LANGUAGE_OPTIONS)
+  const selectedCertificacao = firstAllowed(draft.certificacoes, CERTIFICATION_OPTIONS)
+  const selectedDisponibilidade = onlyAllowedSingle(draft.disponibilidade, AVAILABILITY_OPTIONS)
+  const bioValue = String(draft.descricao || '').slice(0, BIO_MAX_LENGTH)
 
   return (
     <div>
@@ -612,23 +678,30 @@ function ProfilePage({ user, profile, onNavigate }) {
           </div>
           <div>
             <label className="label">Especialidade</label>
-            <input className="input-field" value={draft.especialidade || ''} onChange={(e) => setField('especialidade', e.target.value)} />
+            <select className="input-field" value={selectedEspecialidade} onChange={(e) => setField('especialidade', e.target.value)}>
+              <option value="">Selecione</option>
+              {SPECIALTY_OPTIONS.map((option) => <option key={option}>{option}</option>)}
+            </select>
           </div>
           <div>
-            <label className="label">Areas de atuacao</label>
-            <input className="input-field" value={textFromArray(draft.areas)} onChange={(e) => setField('areas', e.target.value)} placeholder="Separadas por virgula" />
+            <ProfileSelect label="Areas de atuacao" value={selectedArea} options={PROFESSIONAL_AREA_OPTIONS} onChange={(next) => setField('areas', next ? [next] : [])} />
           </div>
           <div>
-            <label className="label">Idiomas</label>
-            <input className="input-field" value={textFromArray(draft.idiomas)} onChange={(e) => setField('idiomas', e.target.value)} placeholder="Separados por virgula" />
+            <ProfileSelect label="Idiomas" value={selectedIdioma} options={LANGUAGE_OPTIONS} onChange={(next) => setField('idiomas', next ? [next] : [])} />
           </div>
           <div>
             <label className="label">Formacao</label>
-            <input className="input-field" value={draft.formacao || ''} onChange={(e) => setField('formacao', e.target.value)} />
+            <select className="input-field" value={selectedFormacao} onChange={(e) => setField('formacao', e.target.value)}>
+              <option value="">Selecione</option>
+              {FORMATION_OPTIONS.map((option) => <option key={option}>{option}</option>)}
+            </select>
           </div>
           <div>
             <label className="label">Experiencia</label>
-            <input className="input-field" value={draft.experiencia || ''} onChange={(e) => setField('experiencia', e.target.value)} />
+            <select className="input-field" value={selectedExperiencia} onChange={(e) => setField('experiencia', e.target.value)}>
+              <option value="">Selecione</option>
+              {EXPERIENCE_OPTIONS.map((option) => <option key={option}>{option}</option>)}
+            </select>
           </div>
           <div>
             <label className="label">Modalidade</label>
@@ -653,19 +726,29 @@ function ProfilePage({ user, profile, onNavigate }) {
           </div>
           <div>
             <label className="label">Disponibilidade</label>
-            <input className="input-field" value={draft.disponibilidade || ''} onChange={(e) => setField('disponibilidade', e.target.value)} />
+            <select className="input-field" value={selectedDisponibilidade} onChange={(e) => setField('disponibilidade', e.target.value)}>
+              <option value="">Selecione</option>
+              {AVAILABILITY_OPTIONS.map((option) => <option key={option}>{option}</option>)}
+            </select>
           </div>
           <div>
             <label className="label">Redes sociais</label>
             <input className="input-field" value={draft.redesSociais || ''} onChange={(e) => setField('redesSociais', e.target.value)} />
           </div>
           <div className="sm:col-span-2">
-            <label className="label">Certificacoes</label>
-            <input className="input-field" value={draft.certificacoes || ''} onChange={(e) => setField('certificacoes', e.target.value)} />
+            <ProfileSelect label="Certificacoes" value={selectedCertificacao} options={CERTIFICATION_OPTIONS} onChange={(next) => setField('certificacoes', next ? [next] : [])} />
           </div>
           <div className="sm:col-span-2">
             <label className="label">Biografia</label>
-            <textarea className="input-field" rows={5} value={draft.descricao || ''} onChange={(e) => setField('descricao', e.target.value)} />
+            <textarea
+              className="input-field"
+              rows={5}
+              maxLength={BIO_MAX_LENGTH}
+              value={bioValue}
+              onChange={(e) => setField('descricao', e.target.value.slice(0, BIO_MAX_LENGTH))}
+              placeholder="Conte brevemente sua abordagem e forma de atendimento."
+            />
+            <p className="mt-1.5 text-right text-xs text-stone-400">{bioValue.length}/{BIO_MAX_LENGTH}</p>
           </div>
           {saveMessage && (
             <div className={`sm:col-span-2 rounded-lg border px-4 py-3 text-sm ${saveState === 'erro' ? 'border-red-100 bg-red-50 text-red-700' : 'border-sage-100 bg-sage-50 text-sage-700'}`}>
@@ -692,25 +775,60 @@ function ProfilePage({ user, profile, onNavigate }) {
   )
 }
 
-function RequestsPage({ requests }) {
+function RequestsPage({ requests, user, profile }) {
   const [selected, setSelected] = useState(null)
   const [busyId, setBusyId] = useState('')
   const [message, setMessage] = useState('')
+  const [scheduleByRequest, setScheduleByRequest] = useState({})
   const activeRequests = requests.filter((request) => ['nova', 'pendente'].includes(request.status || 'nova'))
   const historyRequests = requests.filter((request) => !['nova', 'pendente'].includes(request.status || 'nova'))
   const statusClass = (status) => `request-status request-status-${status || 'nova'}`
 
   const updateStatus = async (request, status) => {
+    const scheduledAt = scheduleByRequest[request.id]
+    if (status === 'aceita' && !scheduledAt) {
+      setMessage('Escolha data e hora para aceitar e criar o atendimento na agenda.')
+      return
+    }
+    if (status === 'aceita' && toDate(scheduledAt)?.getTime() < Date.now() - 60000) {
+      setMessage('Escolha uma data e hora futura para aceitar a solicitacao.')
+      return
+    }
+
     setBusyId(`${request.id}-${status}`)
     setMessage('')
     try {
-      await updateDoc(doc(db, 'requests', request.id), {
+      let appointmentId = request.appointmentId || ''
+      const batch = writeBatch(db)
+      if (status === 'aceita' && scheduledAt && !appointmentId) {
+        const appointmentRef = doc(collection(db, 'appointments'))
+        appointmentId = appointmentRef.id
+        batch.set(appointmentRef, {
+          profissionalUid: user.uid,
+          profissionalNome: profile?.nome || user.displayName || request.profissionalNome || 'Profissional',
+          requestId: request.id,
+          pacienteUid: request.pacienteUid || '',
+          pacienteNome: request.pacienteNome || 'Paciente anonimo',
+          data: new Date(scheduledAt).toISOString(),
+          modalidade: profile?.atendimento || 'Online',
+          status: 'agendada',
+          observacoes: request.motivo || '',
+          criadaEm: serverTimestamp(),
+          atualizadaEm: serverTimestamp(),
+        })
+      }
+
+      batch.update(doc(db, 'requests', request.id), {
         status,
+        appointmentId,
+        agendadaPara: status === 'aceita' && scheduledAt ? new Date(scheduledAt).toISOString() : request.agendadaPara || null,
         respondidaEm: ['aceita', 'recusada'].includes(status) ? serverTimestamp() : request.respondidaEm || null,
         finalizadaEm: status === 'finalizada' ? serverTimestamp() : request.finalizadaEm || null,
         atualizadaEm: serverTimestamp(),
       })
+      await batch.commit()
       setMessage('Solicitacao atualizada com sucesso.')
+      setScheduleByRequest((current) => ({ ...current, [request.id]: '' }))
       if (selected?.id === request.id) setSelected((current) => ({ ...current, status }))
     } catch (error) {
       console.error('Erro ao atualizar solicitacao:', error)
@@ -721,43 +839,69 @@ function RequestsPage({ requests }) {
   }
 
   return (
-    <div>
-      <SectionHeader title="Solicitacoes" description="Central real de pedidos de contato enviados pelos pacientes." />
+    <div className="experience-page">
+      <SectionHeader title="Solicitacoes" description="Pedidos de contato entram aqui como uma triagem acolhedora antes do atendimento." />
       {message && (
         <div className={`mb-4 rounded-lg border px-4 py-3 text-sm ${message.includes('sucesso') ? 'border-sage-100 bg-sage-50 text-sage-700' : 'border-red-100 bg-red-50 text-red-700'}`}>
           {message}
         </div>
       )}
 
-      <section className="mb-6 grid gap-3 sm:grid-cols-5">
-        {REQUEST_STATUS.map((status) => (
-          <StatCard key={status} label={status} value={requests.filter((item) => (item.status || 'nova') === status).length} icon="inbox" />
-        ))}
+      <section className="experience-hero mb-6">
+        <div className="experience-hero-main">
+          <span className="experience-kicker">Central de acolhimento</span>
+          <h2>Fila de chegada</h2>
+          <p>Pedidos novos entram como uma triagem rapida: entenda o motivo, aceite o atendimento ou envie para o historico.</p>
+        </div>
+        <div className="experience-hero-number">
+          <span>agora</span>
+          <strong>{activeRequests.length}</strong>
+          <p>aguardando resposta</p>
+        </div>
+        <div className="experience-pill-list">
+          {REQUEST_STATUS.map((status) => (
+            <span key={status}>{status}: {requests.filter((item) => (item.status || 'nova') === status).length}</span>
+          ))}
+        </div>
       </section>
 
       {activeRequests.length ? (
-        <div className="space-y-3">
+        <div className="request-river">
           {activeRequests.map((request) => (
-            <article key={request.id} className="card request-card request-card-active p-5">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="font-medium text-stone-950">{request.pacienteNome || 'Paciente anonimo'}</h2>
-                    <span className={`badge border border-stone-200 bg-stone-50 text-stone-600 ${statusClass(request.status)}`}>{request.status || 'nova'}</span>
+            <article key={request.id} className="request-ticket request-card request-card-active">
+              <div className="request-ticket-glow" />
+              <div className="request-ticket-body">
+                <div className="flex items-start gap-4">
+                  <div className="request-avatar">
+                    {(request.pacienteNome || 'P').split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase()}
                   </div>
-                  <p className="mt-2 text-sm leading-relaxed text-stone-600">{request.motivo || 'Sem motivo informado'}</p>
-                  <div className="mt-3 flex flex-wrap gap-2 text-xs text-stone-400">
-                    <span>{formatDate(request.criadaEm)}</span>
-                    <span>{request.categoria || 'Sem categoria'}</span>
-                    <span>Espera: {timeAgo(request.criadaEm)}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-lg font-semibold text-stone-950">{request.pacienteNome || 'Paciente anonimo'}</h2>
+                      <span className={`badge border border-stone-200 bg-stone-50 text-stone-600 ${statusClass(request.status)}`}>{request.status || 'nova'}</span>
+                    </div>
+                    <p className="mt-3 text-sm leading-relaxed text-stone-600">{request.motivo || 'Sem motivo informado'}</p>
+                    <div className="request-meta-strip mt-4">
+                      <span><Icon name="clock" className="h-3.5 w-3.5" />{timeAgo(request.criadaEm)}</span>
+                      <span><Icon name="filter" className="h-3.5 w-3.5" />{request.categoria || 'Sem categoria'}</span>
+                      <span><Icon name="calendar" className="h-3.5 w-3.5" />{formatDate(request.criadaEm)}</span>
+                    </div>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <button onClick={() => updateStatus(request, 'aceita')} disabled={Boolean(busyId)} className="btn-primary px-3 py-2 text-xs">{busyId === `${request.id}-aceita` ? 'Salvando...' : 'Aceitar'}</button>
-                  <button onClick={() => updateStatus(request, 'recusada')} disabled={Boolean(busyId)} className="btn-secondary px-3 py-2 text-xs">{busyId === `${request.id}-recusada` ? 'Salvando...' : 'Recusar'}</button>
-                  <button onClick={() => setSelected(request)} className="btn-secondary px-3 py-2 text-xs">Detalhes</button>
-                  <button onClick={() => updateStatus(request, 'finalizada')} disabled={Boolean(busyId)} className="btn-secondary px-3 py-2 text-xs">{busyId === `${request.id}-finalizada` ? 'Salvando...' : 'Finalizar'}</button>
-                </div>
+              </div>
+              <div className="request-ticket-actions">
+                <label className="text-[11px] font-semibold uppercase tracking-normal text-stone-500">
+                  Data do atendimento
+                  <input
+                    type="datetime-local"
+                    className="input-field mt-1 min-h-9 px-2 py-1 text-xs"
+                    value={scheduleByRequest[request.id] || ''}
+                    onChange={(event) => setScheduleByRequest((current) => ({ ...current, [request.id]: event.target.value }))}
+                  />
+                </label>
+                <button onClick={() => updateStatus(request, 'aceita')} disabled={Boolean(busyId)} className="btn-primary px-3 py-2 text-xs">{busyId === `${request.id}-aceita` ? 'Salvando...' : 'Aceitar'}</button>
+                <button onClick={() => updateStatus(request, 'recusada')} disabled={Boolean(busyId)} className="btn-secondary px-3 py-2 text-xs">{busyId === `${request.id}-recusada` ? 'Salvando...' : 'Recusar'}</button>
+                <button onClick={() => setSelected(request)} className="btn-secondary px-3 py-2 text-xs">Detalhes</button>
               </div>
             </article>
           ))}
@@ -767,28 +911,26 @@ function RequestsPage({ requests }) {
       )}
 
       {historyRequests.length > 0 && (
-        <section className="mt-6">
-          <div className="mb-3 flex items-center justify-between gap-3">
+        <section className="history-dock mt-8">
+          <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h2 className="font-sans text-base font-semibold text-stone-950">Historico</h2>
-              <p className="text-sm text-stone-500">Solicitacoes ja respondidas ficam aqui para consulta.</p>
+              <p className="text-sm text-stone-500">Solicitacoes ja respondidas ficam em uma linha compacta de consulta.</p>
             </div>
             <span className="badge request-count border border-stone-200 bg-stone-50 text-stone-600">{historyRequests.length}</span>
           </div>
-          <div className="space-y-3">
+          <div className="history-dock-list">
             {historyRequests.map((request) => (
-              <article key={request.id} className="request-card request-card-history rounded-lg border border-stone-200 bg-stone-50/70 p-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-sm font-medium text-stone-900">{request.pacienteNome || 'Paciente anonimo'}</h3>
-                      <span className={`badge border border-stone-200 bg-stone-50 text-stone-600 ${statusClass(request.status)}`}>{request.status || 'nova'}</span>
-                    </div>
-                    <p className="mt-1 line-clamp-2 text-sm text-stone-500">{request.motivo || 'Sem motivo informado'}</p>
-                    <p className="mt-2 text-xs text-stone-400">{formatDate(request.atualizadaEm || request.respondidaEm || request.finalizadaEm || request.criadaEm)}</p>
+              <article key={request.id} className="history-chip request-card request-card-history">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-sm font-semibold text-stone-900">{request.pacienteNome || 'Paciente anonimo'}</h3>
+                    <span className={`badge border border-stone-200 bg-stone-50 text-stone-600 ${statusClass(request.status)}`}>{request.status || 'nova'}</span>
                   </div>
-                  <button onClick={() => setSelected(request)} className="btn-secondary px-3 py-2 text-xs">Detalhes</button>
+                  <p className="mt-1 line-clamp-2 text-sm text-stone-500">{request.motivo || 'Sem motivo informado'}</p>
+                  <p className="mt-2 text-xs text-stone-400">{formatDate(request.atualizadaEm || request.respondidaEm || request.finalizadaEm || request.criadaEm)}</p>
                 </div>
+                <button onClick={() => setSelected(request)} className="btn-secondary px-3 py-2 text-xs">Abrir</button>
               </article>
             ))}
           </div>
@@ -797,10 +939,11 @@ function RequestsPage({ requests }) {
 
       {selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-          <div className="request-modal w-full max-w-lg rounded-lg bg-stone-50 p-6 shadow-card">
+          <div className="request-modal detail-sheet w-full max-w-lg bg-stone-50 p-6 shadow-card">
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
-                <h3 className="font-serif text-xl text-stone-950">Detalhes da solicitacao</h3>
+                <span className="experience-kicker">detalhes</span>
+                <h3 className="font-serif text-2xl text-stone-950">Solicitacao</h3>
                 <p className="text-sm text-stone-500">{selected.pacienteNome || 'Paciente anonimo'}</p>
               </div>
               <button onClick={() => setSelected(null)} className="btn-ghost p-2"><Icon name="x" /></button>
@@ -813,6 +956,145 @@ function RequestsPage({ requests }) {
             </dl>
           </div>
         </div>
+      )}
+    </div>
+  )
+}
+
+function SessionsPage({ requests, user }) {
+  const [busyId, setBusyId] = useState('')
+  const [message, setMessage] = useState('')
+  const [selectedId, setSelectedId] = useState('')
+  const acceptedRequests = requests
+    .filter((request) => request.status === 'aceita')
+    .sort((a, b) => (toDate(b.respondidaEm || b.atualizadaEm || b.criadaEm)?.getTime() || 0) - (toDate(a.respondidaEm || a.atualizadaEm || a.criadaEm)?.getTime() || 0))
+  const finalizedRequests = requests
+    .filter((request) => request.status === 'finalizada')
+    .sort((a, b) => (toDate(b.finalizadaEm || b.atualizadaEm || b.criadaEm)?.getTime() || 0) - (toDate(a.finalizadaEm || a.atualizadaEm || a.criadaEm)?.getTime() || 0))
+  const selectedSession = acceptedRequests.find((request) => request.id === selectedId) || acceptedRequests[0] || null
+
+  useEffect(() => {
+    if (!acceptedRequests.length) {
+      setSelectedId('')
+      return
+    }
+    if (!acceptedRequests.some((request) => request.id === selectedId)) {
+      setSelectedId(acceptedRequests[0].id)
+    }
+  }, [acceptedRequests, selectedId])
+
+  const finishSession = async (request) => {
+    setBusyId(request.id)
+    setMessage('')
+    try {
+      await updateDoc(doc(db, 'requests', request.id), {
+        status: 'finalizada',
+        finalizadaEm: serverTimestamp(),
+        atualizadaEm: serverTimestamp(),
+      })
+      setMessage('Atendimento finalizado. O paciente ja pode avaliar.')
+    } catch (error) {
+      console.error('Erro ao finalizar atendimento:', error)
+      setMessage(error.message || 'Nao foi possivel finalizar o atendimento.')
+    } finally {
+      setBusyId('')
+    }
+  }
+
+  return (
+    <div className="experience-page">
+      <SectionHeader
+        title="Atendimentos"
+        description="Solicitacoes aceitas ficam aqui para voce acompanhar e finalizar quando o atendimento terminar."
+      />
+
+      {message && (
+        <div className={`mb-4 rounded-lg border px-4 py-3 text-sm ${message.includes('finalizado') ? 'border-sage-100 bg-sage-50 text-sage-700' : 'border-red-100 bg-red-50 text-red-700'}`}>
+          {message}
+        </div>
+      )}
+
+      <section className="session-hero mb-6">
+        <div>
+          <span className="experience-kicker">Sala em tempo real</span>
+          <h2>Atendimentos ativos</h2>
+          <p>Selecione uma pessoa na lateral, acompanhe o chat e finalize quando o ciclo estiver concluido.</p>
+        </div>
+        <div className="session-hero-metrics">
+          <span><strong>{acceptedRequests.length}</strong> ativos</span>
+          <span><strong>{finalizedRequests.length}</strong> finalizados</span>
+          <span><strong>{selectedSession ? '1' : '0'}</strong> chat aberto</span>
+        </div>
+      </section>
+
+      {acceptedRequests.length ? (
+        <div className="session-studio">
+          <aside className="session-patient-rail">
+            <div className="mb-3 px-1">
+              <span className="experience-kicker">pacientes</span>
+            </div>
+            {acceptedRequests.map((request) => (
+              <button
+                key={request.id}
+                type="button"
+                onClick={() => setSelectedId(request.id)}
+                className={`session-patient-card ${selectedSession?.id === request.id ? 'active' : ''}`}
+              >
+                <span className="request-avatar">
+                  {(request.pacienteNome || 'P').split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase()}
+                </span>
+                <span className="min-w-0 flex-1 text-left">
+                  <strong>{request.pacienteNome || 'Paciente anonimo'}</strong>
+                  <small>{request.categoria || 'Sem categoria'}</small>
+                </span>
+                <Icon name="chevronRight" className="h-4 w-4 shrink-0" />
+              </button>
+            ))}
+          </aside>
+          <section className="session-workbench">
+            {selectedSession && (
+              <div className="session-workbench-header">
+                <div>
+                  <span className="experience-kicker">atendimento selecionado</span>
+                  <h2>{selectedSession.pacienteNome || 'Paciente anonimo'}</h2>
+                  <p>{selectedSession.motivo || 'Sem motivo informado'}</p>
+                </div>
+                <button onClick={() => finishSession(selectedSession)} disabled={busyId === selectedSession.id} className="btn-primary shrink-0 px-3 py-2 text-xs">
+                  <Icon name="check" className="h-3.5 w-3.5" />
+                  {busyId === selectedSession.id ? 'Finalizando...' : 'Finalizar'}
+                </button>
+              </div>
+            )}
+            <SessionChat session={selectedSession} user={user} role="profissional" />
+          </section>
+        </div>
+      ) : (
+        <EmptyState icon="heart" title="Nenhum atendimento em aberto" description="Quando voce aceitar uma solicitacao, ela aparece aqui para acompanhamento." />
+      )}
+
+      {finalizedRequests.length > 0 && (
+        <section className="history-dock mt-8">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-sans text-base font-semibold text-stone-950">Finalizados</h2>
+              <p className="text-sm text-stone-500">Atendimentos finalizados liberam avaliacao para o paciente.</p>
+            </div>
+            <span className="badge request-count border border-stone-200 bg-stone-50 text-stone-600">{finalizedRequests.length}</span>
+          </div>
+          <div className="history-dock-list">
+            {finalizedRequests.slice(0, 8).map((request) => (
+              <article key={request.id} className="history-chip request-card request-card-history">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h3 className="text-sm font-medium text-stone-900">{request.pacienteNome || 'Paciente anonimo'}</h3>
+                    <p className="mt-1 line-clamp-2 text-sm text-stone-500">{request.motivo || 'Sem motivo informado'}</p>
+                  </div>
+                  <span className="text-xs text-stone-400">{formatDate(request.finalizadaEm || request.atualizadaEm)}</span>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
       )}
     </div>
   )
@@ -847,39 +1129,51 @@ function CommunityPage({ posts, savedIds, user }) {
   }
 
   return (
-    <div>
+    <div className="experience-page community-lounge">
       <SectionHeader title="Comunidade" description="Feed real de desabafos, interacoes, filtros e publicacoes salvas." />
       {message && (
         <div className={`mb-4 rounded-lg border px-4 py-3 text-sm ${message.includes('sucesso') || message.includes('removida') ? 'border-sage-100 bg-sage-50 text-sage-700' : 'border-red-100 bg-red-50 text-red-700'}`}>
           {message}
         </div>
       )}
-      <div className="card community-filter mb-5 grid gap-3 p-4 md:grid-cols-[1fr_auto]">
-        <div className="relative">
-          <Icon name="search" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
-          <input className="input-field pl-10" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Pesquisar no feed..." />
+
+      <section className="community-editorial mb-6">
+        <div>
+          <span className="experience-kicker">mural vivo</span>
+          <h2>Escuta da comunidade</h2>
+          <p>Use a busca e as categorias para encontrar temas, salvar relatos importantes e acompanhar sinais de acolhimento.</p>
         </div>
-        <select className="input-field md:w-56" value={category} onChange={(e) => setCategory(e.target.value)}>
-          {CATEGORIES.map((item) => <option key={item}>{item}</option>)}
-        </select>
-      </div>
+        <div className="community-search-panel">
+          <div className="relative">
+            <Icon name="search" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+            <input className="input-field pl-10" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Pesquisar no feed..." />
+          </div>
+          <select className="input-field" value={category} onChange={(e) => setCategory(e.target.value)}>
+            {CATEGORIES.map((item) => <option key={item}>{item}</option>)}
+          </select>
+        </div>
+      </section>
 
       {filtered.length ? (
-        <div className="space-y-3">
+        <div className="community-mosaic">
           {filtered.map((post) => (
-            <article key={post.id} className="card community-post p-5">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <span className="badge community-badge border border-stone-200 bg-stone-50 text-stone-600">{post.categoria || 'Sem categoria'}</span>
-                <span className="text-xs text-stone-400">{formatDate(post.criadoEm)}</span>
-              </div>
-              <p className="whitespace-pre-line text-sm leading-relaxed text-stone-700">{post.conteudo}</p>
-              <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-stone-100 pt-3 text-xs text-stone-500">
-                <span className="flex items-center gap-1"><Icon name="heart" className="h-4 w-4" />{post.curtidas?.length || 0} curtidas</span>
-                <span className="flex items-center gap-1"><Icon name="message" className="h-4 w-4" />{post.respostas?.length || 0} comentarios</span>
-                <span className="flex items-center gap-1"><Icon name="activity" className="h-4 w-4" />{post.compartilhamentos || 0} compartilhamentos</span>
-                <button onClick={() => toggleSaved(post)} className="ml-auto text-brand-700 hover:underline">
-                  {savedIds.includes(post.id) ? 'Remover dos salvos' : 'Salvar'}
+            <article key={post.id} className="community-note community-post">
+              <div className="community-note-pin" />
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                  <span className="badge community-badge border border-stone-200 bg-stone-50 text-stone-600">{post.categoria || 'Sem categoria'}</span>
+                  <p className="mt-2 text-xs text-stone-400">{formatDate(post.criadoEm)}</p>
+                </div>
+                <button onClick={() => toggleSaved(post)} className="community-save-button">
+                  <Icon name="save" className="h-3.5 w-3.5" />
+                  {savedIds.includes(post.id) ? 'Salvo' : 'Salvar'}
                 </button>
+              </div>
+              <p className="community-story-text whitespace-pre-line text-base leading-relaxed text-stone-700">{post.conteudo}</p>
+              <div className="community-note-footer">
+                <span><Icon name="heart" className="h-4 w-4" />{post.curtidas?.length || 0}</span>
+                <span><Icon name="message" className="h-4 w-4" />{post.respostas?.length || 0}</span>
+                <span><Icon name="activity" className="h-4 w-4" />{post.compartilhamentos || 0}</span>
               </div>
             </article>
           ))}
@@ -910,6 +1204,11 @@ function AnswerPage({ posts, user }) {
     setSendingId(post.id)
     setMessage('')
     try {
+      const moderacao = await moderarTexto(text)
+      if (!moderacao.ok) {
+        setMessage(`Resposta nao permitida: ${moderacao.motivo}`)
+        return
+      }
       await updateDoc(doc(db, 'posts', post.id), {
         respostas: arrayUnion({
           id: `${user.uid}-${Date.now()}`,
@@ -989,24 +1288,34 @@ function ReviewsPage({ reviews }) {
   const distribution = [5, 4, 3, 2, 1].map((star) => ({ label: `${star} estrelas`, value: normalizedReviews.filter((review) => review.nota === star).length }))
 
   return (
-    <div>
+    <div className="experience-page review-lounge">
       <SectionHeader title="Avaliacoes" description="Somente usuarios podem avaliar profissionais. Aqui voce acompanha a reputacao recebida." />
-      <section className="mb-6 grid gap-4 md:grid-cols-3">
-        <StatCard label="Nota media" value={averageRating ? averageRating.toFixed(1) : '0'} icon="star" />
-        <StatCard label="Total de avaliacoes" value={normalizedReviews.length} icon="message" />
-        <StatCard label="Comentarios recentes" value={normalizedReviews.filter((item) => item.comentario).length} icon="file" />
+      <section className="review-radar mb-6">
+        <div className="review-score-main">
+          <span>reputacao recebida</span>
+          <strong>{averageRating ? averageRating.toFixed(1) : '0'}</strong>
+          <p>{normalizedReviews.length} avaliacao(oes) de atendimentos finalizados</p>
+        </div>
+        <div className="review-radar-stat"><span>Total</span><strong>{normalizedReviews.length}</strong></div>
+        <div className="review-radar-stat"><span>Comentarios</span><strong>{normalizedReviews.filter((item) => item.comentario).length}</strong></div>
       </section>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="card p-5">
-          <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Distribuicao por estrelas</h2>
+      <div className="review-grid">
+        <div className="review-panel review-chart-panel card p-5">
+          <div className="mb-4">
+            <span className="experience-kicker">distribuicao</span>
+            <h2 className="font-sans text-base font-semibold text-stone-950">Notas por estrelas</h2>
+          </div>
           <SmallBarChart data={distribution} emptyText="Avaliacoes reais ainda nao foram registradas." />
         </div>
-        <div className="card p-5">
-          <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Comentarios recentes</h2>
+        <div className="review-panel review-testimonial-panel card p-5">
+          <div className="mb-4">
+            <span className="experience-kicker">depoimentos</span>
+            <h2 className="font-sans text-base font-semibold text-stone-950">Comentarios recentes</h2>
+          </div>
           {normalizedReviews.some((item) => item.comentario) ? (
-            <div className="space-y-3">
+            <div className="review-testimonial-stack">
               {normalizedReviews.filter((item) => item.comentario).slice(0, 5).map((review) => (
-                <div key={review.id} className="rounded-lg border border-stone-200 p-3">
+                <div key={review.id} className="review-comment-row border border-stone-200 p-4">
                   <p className="text-sm text-stone-700">{review.comentario}</p>
                   <p className="mt-2 text-xs text-stone-400">{review.nota || 0} estrelas - {formatDate(review.criadaEm)}</p>
                 </div>
@@ -1021,10 +1330,12 @@ function ReviewsPage({ reviews }) {
   )
 }
 
-function SchedulePage({ appointments, profile, user }) {
+function SchedulePage({ appointments, requests, profile, user }) {
   const [availability, setAvailability] = useState(profile?.disponibilidade || '')
   const [appointmentForm, setAppointmentForm] = useState({
     id: '',
+    requestId: '',
+    pacienteUid: '',
     pacienteNome: '',
     data: '',
     modalidade: profile?.atendimento || 'Online',
@@ -1034,6 +1345,9 @@ function SchedulePage({ appointments, profile, user }) {
   const [savingAvailability, setSavingAvailability] = useState(false)
   const [savingAppointment, setSavingAppointment] = useState(false)
   const [message, setMessage] = useState('')
+  const acceptedRequests = requests
+    .filter((request) => request.status === 'aceita')
+    .sort((a, b) => (toDate(b.respondidaEm || b.atualizadaEm || b.criadaEm)?.getTime() || 0) - (toDate(a.respondidaEm || a.atualizadaEm || a.criadaEm)?.getTime() || 0))
   const sortedAppointments = [...appointments].sort((a, b) => {
     const dateA = toDate(a.data)?.getTime() || 0
     const dateB = toDate(b.data)?.getTime() || 0
@@ -1071,6 +1385,7 @@ function SchedulePage({ appointments, profile, user }) {
     setAppointmentForm((current) => ({
       ...current,
       id: '',
+      requestId: current.requestId || '',
       data: `${toLocalDateInput(date)}T${hour}`,
       status: 'agendada',
       modalidade: current.modalidade || profile?.atendimento || 'Online',
@@ -1094,12 +1409,25 @@ function SchedulePage({ appointments, profile, user }) {
   const resetAppointmentForm = () => {
     setAppointmentForm({
       id: '',
+      requestId: '',
+      pacienteUid: '',
       pacienteNome: '',
       data: '',
       modalidade: profile?.atendimento || 'Online',
       status: 'agendada',
       observacoes: '',
     })
+  }
+
+  const selectRequest = (requestId) => {
+    const request = acceptedRequests.find((item) => item.id === requestId)
+    setAppointmentForm((current) => ({
+      ...current,
+      requestId,
+      pacienteUid: request?.pacienteUid || '',
+      pacienteNome: request?.pacienteNome || '',
+      observacoes: request && !current.observacoes ? request.motivo || '' : current.observacoes,
+    }))
   }
 
   const saveAppointment = async (event) => {
@@ -1112,11 +1440,21 @@ function SchedulePage({ appointments, profile, user }) {
     setSavingAppointment(true)
     setMessage('')
     try {
+      const nextDate = new Date(appointmentForm.data)
+      const nextKey = `${toLocalDateInput(nextDate)}T${String(nextDate.getHours()).padStart(2, '0')}:00`
+      const conflict = appointmentBySlot.get(nextKey)
+      if (conflict && conflict.id !== appointmentForm.id) {
+        setMessage('Ja existe um evento nesse horario. Escolha outro horario ou edite o evento existente.')
+        return
+      }
+
       const payload = {
         profissionalUid: user.uid,
         profissionalNome: profile?.nome || user.displayName || 'Profissional',
+        requestId: appointmentForm.requestId || '',
+        pacienteUid: appointmentForm.pacienteUid || '',
         pacienteNome: appointmentForm.pacienteNome || 'Paciente anonimo',
-        data: new Date(appointmentForm.data).toISOString(),
+        data: nextDate.toISOString(),
         modalidade: appointmentForm.modalidade || profile?.atendimento || 'Online',
         status: appointmentForm.status || 'agendada',
         observacoes: appointmentForm.observacoes || '',
@@ -1133,6 +1471,13 @@ function SchedulePage({ appointments, profile, user }) {
         })
         setMessage('Atendimento criado com sucesso.')
       }
+      if (payload.requestId && ['concluida', 'finalizada'].includes(payload.status)) {
+        await updateDoc(doc(db, 'requests', payload.requestId), {
+          status: 'finalizada',
+          finalizadaEm: serverTimestamp(),
+          atualizadaEm: serverTimestamp(),
+        })
+      }
       resetAppointmentForm()
     } catch (error) {
       console.error('Erro ao salvar atendimento:', error)
@@ -1145,6 +1490,8 @@ function SchedulePage({ appointments, profile, user }) {
   const editAppointment = (appointment) => {
     setAppointmentForm({
       id: appointment.id,
+      requestId: appointment.requestId || '',
+      pacienteUid: appointment.pacienteUid || '',
       pacienteNome: appointment.pacienteNome || '',
       data: toDateTimeLocal(appointment.data),
       modalidade: appointment.modalidade || profile?.atendimento || 'Online',
@@ -1181,13 +1528,28 @@ function SchedulePage({ appointments, profile, user }) {
         <div className="space-y-4">
           <div className="card p-5">
             <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">Disponibilidade semanal</h2>
-            <textarea className="input-field" rows={5} value={availability} onChange={(e) => setAvailability(e.target.value)} placeholder="Ex: Segunda a sexta, 18h as 21h" />
+            <select className="input-field" value={availability} onChange={(e) => setAvailability(e.target.value)}>
+              <option value="">Selecione</option>
+              {AVAILABILITY_OPTIONS.map((item) => <option key={item}>{item}</option>)}
+            </select>
             <button onClick={saveAvailability} disabled={savingAvailability} className="btn-primary mt-3 w-full gap-2"><Icon name="save" />{savingAvailability ? 'Salvando...' : 'Salvar horarios'}</button>
           </div>
 
           <form onSubmit={saveAppointment} className="card p-5">
             <h2 className="mb-4 font-sans text-base font-semibold text-stone-950">{appointmentForm.id ? 'Editar evento' : 'Novo evento'}</h2>
             <div className="space-y-3">
+              <div>
+                <label className="label">Atendimento aceito</label>
+                <select className="input-field" value={appointmentForm.requestId} onChange={(e) => selectRequest(e.target.value)}>
+                  <option value="">Evento avulso</option>
+                  {acceptedRequests.map((request) => (
+                    <option key={request.id} value={request.id}>
+                      {request.pacienteNome || 'Paciente anonimo'} - {request.categoria || 'Solicitacao'}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-stone-400">Escolha uma solicitacao aceita para vincular agenda, chat e avaliacao.</p>
+              </div>
               <div>
                 <label className="label">Paciente</label>
                 <input className="input-field" value={appointmentForm.pacienteNome} onChange={(e) => setAppointmentForm((current) => ({ ...current, pacienteNome: e.target.value }))} placeholder="Paciente anonimo" />
@@ -1199,9 +1561,7 @@ function SchedulePage({ appointments, profile, user }) {
               <div>
                 <label className="label">Modalidade</label>
                 <select className="input-field" value={appointmentForm.modalidade} onChange={(e) => setAppointmentForm((current) => ({ ...current, modalidade: e.target.value }))}>
-                  <option>Online</option>
-                  <option>Presencial</option>
-                  <option>Online e presencial</option>
+                  {SERVICE_MODALITIES.map((item) => <option key={item}>{item}</option>)}
                 </select>
               </div>
               <div>
@@ -1270,7 +1630,7 @@ function SchedulePage({ appointments, profile, user }) {
                           {appointment ? (
                             <>
                               <span className="block truncate font-semibold">{appointment.pacienteNome || 'Paciente anonimo'}</span>
-                              <span className="mt-1 block truncate">{appointment.status || 'agendada'}</span>
+                              <span className="mt-1 block truncate">{appointment.status || 'agendada'}{appointment.requestId ? ' - atendimento' : ''}</span>
                             </>
                           ) : (
                             <span className="schedule-free-label flex h-full items-center justify-center text-stone-400">Livre</span>
@@ -1296,6 +1656,7 @@ function SchedulePage({ appointments, profile, user }) {
                     </div>
                     <p className="mt-1 text-sm text-stone-500">{formatDate(appointment.data)}</p>
                     <p className="text-xs text-stone-400">{appointment.modalidade || profile?.atendimento || 'Modalidade nao informada'}</p>
+                    {appointment.requestId && <p className="mt-1 text-xs font-medium text-brand-700">Vinculado a solicitacao aceita</p>}
                     {appointment.observacoes && <p className="mt-2 text-xs text-stone-500">{appointment.observacoes}</p>}
                     <div className="mt-3 flex flex-wrap gap-2">
                       <button onClick={() => editAppointment(appointment)} className="btn-secondary px-3 py-2 text-xs">Editar</button>
@@ -1584,7 +1945,9 @@ export default function ProfessionalHome({ user, profile, activePage = 'home', o
       case 'profile':
         return <ProfilePage user={user} profile={profile} onNavigate={onNavigate} />
       case 'requests':
-        return <RequestsPage requests={data.requests} />
+        return <RequestsPage requests={data.requests} user={user} profile={profile} />
+      case 'sessions':
+        return <SessionsPage requests={data.requests} user={user} />
       case 'community':
         return <CommunityPage posts={data.posts} savedIds={data.savedIds} user={user} />
       case 'answer':
@@ -1592,7 +1955,7 @@ export default function ProfessionalHome({ user, profile, activePage = 'home', o
       case 'reviews':
         return <ReviewsPage reviews={data.reviews} />
       case 'schedule':
-        return <SchedulePage appointments={data.appointments} profile={profile} user={user} />
+        return <SchedulePage appointments={data.appointments} requests={data.requests} profile={profile} user={user} />
       case 'stats':
         return <StatsPage data={data} metrics={metrics} user={user} />
       case 'settings':

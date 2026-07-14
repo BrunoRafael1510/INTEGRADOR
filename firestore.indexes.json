@@ -1,0 +1,31 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "messages",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "atendimentoId", "order": "ASCENDING" },
+        { "fieldPath": "profissionalUid", "order": "ASCENDING" },
+        { "fieldPath": "criadaEm", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "messages",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "atendimentoId", "order": "ASCENDING" },
+        { "fieldPath": "pacienteUid", "order": "ASCENDING" },
+        { "fieldPath": "criadaEm", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "requests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "profissionalUid", "order": "ASCENDING" },
+        { "fieldPath": "pacienteUid", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

@@ -1,0 +1,124 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc(uid) {
+      return get(/databases/$(database)/documents/users/$(uid));
+    }
+
+    function userExists(uid) {
+      return exists(/databases/$(database)/documents/users/$(uid));
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function userType(uid) {
+      return userDoc(uid).data.tipo;
+    }
+
+    function isProfessional(uid) {
+      return signedIn() && userExists(uid) && userType(uid) == 'profissional';
+    }
+
+    function isPatient(uid) {
+      return signedIn() && (!userExists(uid) || userType(uid) != 'profissional');
+    }
+
+    function requestParticipant(data) {
+      return signedIn() && (data.pacienteUid == request.auth.uid || data.profissionalUid == request.auth.uid);
+    }
+
+    function validRequestStatus(status) {
+      return status == 'nova'
+        || status == 'pendente'
+        || status == 'aceita'
+        || status == 'recusada'
+        || status == 'finalizada';
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow create: if isOwner(uid) && request.resource.data.uid == uid;
+      allow update: if isOwner(uid) && request.resource.data.tipo == resource.data.tipo;
+      allow delete: if isOwner(uid);
+
+      match /savedPosts/{postId} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+
+    match /posts/{postId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.autorUid == request.auth.uid;
+      allow update: if signedIn() && (
+        resource.data.autorUid == request.auth.uid ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'curtidas',
+          'respostas',
+          'totalRespostas',
+          'denuncias',
+          'denunciadoPor',
+          'ultimaDenunciaEm',
+          'primeiraRespostaProfissionalEm',
+          'atualizadoEm'
+        ])
+      );
+      allow delete: if signedIn() && resource.data.autorUid == request.auth.uid;
+    }
+
+    match /requests/{requestId} {
+      allow read: if requestParticipant(resource.data);
+      allow create: if isPatient(request.auth.uid)
+        && request.resource.data.pacienteUid == request.auth.uid
+        && request.resource.data.profissionalUid != request.auth.uid
+        && validRequestStatus(request.resource.data.status);
+      allow update: if signedIn() && (
+        resource.data.profissionalUid == request.auth.uid ||
+        resource.data.pacienteUid == request.auth.uid
+      ) && validRequestStatus(request.resource.data.status);
+      allow delete: if false;
+    }
+
+    match /appointments/{appointmentId} {
+      allow read: if requestParticipant(resource.data);
+      allow create: if signedIn()
+        && request.resource.data.profissionalUid == request.auth.uid
+        && isProfessional(request.auth.uid);
+      allow update, delete: if signedIn()
+        && resource.data.profissionalUid == request.auth.uid
+        && isProfessional(request.auth.uid);
+    }
+
+    match /messages/{messageId} {
+      allow read: if requestParticipant(resource.data);
+      allow create: if signedIn()
+        && request.resource.data.senderUid == request.auth.uid
+        && (request.resource.data.pacienteUid == request.auth.uid || request.resource.data.profissionalUid == request.auth.uid);
+      allow update: if signedIn()
+        && (resource.data.pacienteUid == request.auth.uid || resource.data.profissionalUid == request.auth.uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy', 'lidaEm']);
+      allow delete: if false;
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if signedIn();
+      allow create: if isPatient(request.auth.uid)
+        && request.resource.data.pacienteUid == request.auth.uid
+        && request.resource.data.nota >= 1
+        && request.resource.data.nota <= 5;
+      allow update, delete: if false;
+    }
+
+    match /profileViews/{viewId} {
+      allow read: if signedIn() && resource.data.profissionalUid == request.auth.uid;
+      allow create: if signedIn();
+      allow update, delete: if false;
+    }
+  }
+}

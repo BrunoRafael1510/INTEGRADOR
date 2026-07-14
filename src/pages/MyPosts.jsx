@@ -48,10 +48,12 @@ export default function MyPosts({ user }) {
   const handleDeletar = async (id) => {
     if (!window.confirm('Deseja remover este desabafo?')) return
     setDeletando(id)
+    setErro('')
     try {
       await deleteDoc(doc(db, 'posts', id))
     } catch (e) {
-      console.error(e)
+      console.error('Erro ao remover desabafo:', e)
+      setErro(e.message || 'Nao foi possivel remover este desabafo.')
     } finally {
       setDeletando(null)
     }

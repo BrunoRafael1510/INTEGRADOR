@@ -21,7 +21,6 @@ O SafeTalk é um ambiente digital seguro e sem julgamentos para que pessoas poss
 | Estilização | Tailwind CSS 3                      |
 | Auth        | Firebase Authentication             |
 | Banco       | Firebase Firestore                  |
-| IA          | Groq API (llama3-8b-8192)           |
 | Roteamento  | React Router DOM v6                 |
 
 ---
@@ -34,7 +33,7 @@ safetalk_project/
 │   ├── components/
 │   │   ├── Navbar.jsx        # Topbar fixa com logout
 │   │   ├── Sidebar.jsx       # Menu lateral de navegação
-│   │   ├── PostCard.jsx      # Card de desabafo com respostas e IA
+│   │   ├── PostCard.jsx      # Card de desabafo com respostas
 │   │   └── CreatePost.jsx    # Formulário de novo desabafo
 │   ├── pages/
 │   │   ├── Landing.jsx       # Página inicial pública
@@ -46,7 +45,7 @@ safetalk_project/
 │   │   └── MyPosts.jsx       # Meus desabafos
 │   ├── services/
 │   │   ├── firebase.js       # Inicialização Firebase
-│   │   └── ai.js             # Integração Groq (moderação + reformulação)
+│   │   └── ai.js             # Compatibilidade local sem API externa
 │   ├── App.jsx               # Roteamento principal
 │   ├── main.jsx              # Entry point
 │   └── index.css             # Tailwind + estilos globais
@@ -77,7 +76,7 @@ npm install
 cp .env.example .env
 ```
 
-Edite o `.env` com suas credenciais do Firebase e Groq.
+Edite o `.env` com suas credenciais do Firebase.
 
 ### 3. Configure o Firebase
 
@@ -99,15 +98,7 @@ service cloud.firestore {
 }
 ```
 
-### 4. (Opcional) Configure a Groq API
-
-1. Acesse [console.groq.com](https://console.groq.com)
-2. Gere uma API key
-3. Adicione ao `.env` como `VITE_GROQ_API_KEY`
-
-> ⚠️ **Atenção**: em produção, nunca exponha a API key no frontend. Mova a integração para uma Firebase Cloud Function.
-
-### 5. Rode o projeto
+### 4. Rode o projeto
 
 ```bash
 npm run dev
@@ -125,8 +116,6 @@ Acesse em `http://localhost:5173`
 - [x] Feed em tempo real com filtro por categoria
 - [x] Sistema de respostas entre usuários
 - [x] Curtidas em desabafos
-- [x] Moderação de conteúdo com IA
-- [x] Reformulação empática de respostas com IA
 - [x] Lista de profissionais com busca
 - [x] Tela "Meus desabafos" com estatísticas
 - [x] Layout responsivo com sidebar + topbar
@@ -152,7 +141,6 @@ Acesse em `http://localhost:5173`
 | `VITE_FIREBASE_STORAGE_BUCKET`    | Storage bucket               |
 | `VITE_FIREBASE_MESSAGING_SENDER_ID` | Sender ID                  |
 | `VITE_FIREBASE_APP_ID`            | App ID do Firebase           |
-| `VITE_GROQ_API_KEY`               | API Key da Groq (opcional)   |
 
 ---
 
